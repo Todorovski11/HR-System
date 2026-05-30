@@ -2,6 +2,8 @@ export type ProfileRole = 'admin' | 'employee';
 export type EmploymentStatus = 'active' | 'inactive';
 export type AbsenceType = 'vacation' | 'sick' | 'personal' | 'unpaid' | 'other';
 export type AbsenceStatus = 'pending' | 'approved' | 'rejected';
+export type AbsenceHistoryAction = 'created' | 'updated' | 'status_changed' | 'deleted';
+export type PersonalHoursHistoryAction = 'created' | 'updated' | 'deleted';
 
 export type Profile = {
   id: string;
@@ -45,6 +47,45 @@ export type AbsenceWithEmployee = Absence & {
   employees: Pick<Employee, 'id' | 'full_name' | 'yearly_vacation_days'> | null;
 };
 
+export type PersonalHours = {
+  id: string;
+  employee_id: string;
+  date: string;
+  number_of_hours: number;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PersonalHoursWithEmployee = PersonalHours & {
+  employees: Pick<Employee, 'id' | 'full_name'> | null;
+};
+
+export type AbsenceHistory = {
+  id: string;
+  absence_id: string | null;
+  employee_id: string | null;
+  action: AbsenceHistoryAction;
+  old_data: Record<string, unknown> | null;
+  new_data: Record<string, unknown> | null;
+  changed_by: string | null;
+  changed_at: string;
+  profiles: Pick<Profile, 'email' | 'full_name'> | null;
+};
+
+export type PersonalHoursHistory = {
+  id: string;
+  personal_hours_id: string | null;
+  employee_id: string | null;
+  action: PersonalHoursHistoryAction;
+  old_data: Record<string, unknown> | null;
+  new_data: Record<string, unknown> | null;
+  changed_by: string | null;
+  changed_at: string;
+  profiles: Pick<Profile, 'email' | 'full_name'> | null;
+};
+
 export type AppSetting = {
   key: string;
   value: unknown;
@@ -79,6 +120,49 @@ export type Database = {
             columns: ['employee_id'];
             isOneToOne: false;
             referencedRelation: 'employees';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      personal_hours: {
+        Row: PersonalHours;
+        Insert: Omit<Partial<PersonalHours>, 'id' | 'created_at' | 'updated_at'> &
+          Pick<PersonalHours, 'employee_id' | 'date' | 'number_of_hours'>;
+        Update: Partial<Omit<PersonalHours, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'personal_hours_employee_id_fkey';
+            columns: ['employee_id'];
+            isOneToOne: false;
+            referencedRelation: 'employees';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      absence_history: {
+        Row: Omit<AbsenceHistory, 'profiles'>;
+        Insert: Partial<Omit<AbsenceHistory, 'profiles' | 'id' | 'changed_at'>> & Pick<AbsenceHistory, 'action'>;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: 'absence_history_changed_by_fkey';
+            columns: ['changed_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      personal_hours_history: {
+        Row: Omit<PersonalHoursHistory, 'profiles'>;
+        Insert: Partial<Omit<PersonalHoursHistory, 'profiles' | 'id' | 'changed_at'>> & Pick<PersonalHoursHistory, 'action'>;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: 'personal_hours_history_changed_by_fkey';
+            columns: ['changed_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
         ];

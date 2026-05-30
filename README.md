@@ -7,9 +7,14 @@ A small React + Vite + Tailwind CSS MVP for managing employees and tracking vaca
 - Supabase email/password login
 - Admin-only employee CRUD
 - Admin-only absence CRUD
+- Admin-only personal-hours CRUD
 - Manual pending/approved/rejected statuses
+- English and Macedonian UI with language switcher
 - Dashboard totals and vacation balance calculations
+- Personal-hours monthly/yearly dashboard totals
+- Database audit history for absence and personal-hours changes
 - Employee detail pages with absence history
+- Employee detail pages with personal-hours records and audit history
 - Mobile-friendly absence calendar list grouped by month
 - Settings for app name, default yearly vacation days, and current year
 - Complete Supabase SQL schema with RLS policies
@@ -25,6 +30,14 @@ npm install
 2. Create a Supabase project.
 
 3. In Supabase, open **SQL Editor**, paste the contents of `supabase/schema.sql`, and run it.
+
+   If you already ran an older version of this project, run the updated `supabase/schema.sql` again. It adds:
+
+   - `absence_history`
+   - `personal_hours`
+   - `personal_hours_history`
+   - audit trigger functions
+   - updated RLS policies
 
 4. In Supabase, open **Authentication > Users** and create your admin user with email/password.
 
@@ -66,9 +79,33 @@ The generated `dist/` folder is deployment-ready for static hosts such as Vercel
 - `profiles` is connected to `auth.users`.
 - `employees` stores employee records and vacation allowance.
 - `absences` stores vacation/free-day, sick, personal, unpaid, and other records.
+- `absence_history` stores automatic audit records for absence create, update, status change, and delete actions.
+- `personal_hours` stores short personal time-away records.
+- `personal_hours_history` stores automatic audit records for personal-hours create, update, and delete actions.
 - `app_settings` stores simple MVP settings as JSON.
 - RLS is enabled on all tables.
 - Admin access is checked through `public.is_admin()`, which looks up the signed-in user's profile role.
+- History tables are view-only from the frontend. The database writes them through PostgreSQL triggers.
+
+## Import employees from the 2026 Word schedule
+
+The private source document is kept in `data/`, which is ignored by Git.
+
+To import the employees extracted from that file, run this in **Supabase > SQL Editor** after the main schema:
+
+```sql
+-- Paste and run the contents of:
+-- supabase/seed_employees_2026.sql
+```
+
+The seed inserts employees only if the same `full_name` is not already present. It fills:
+
+- `full_name`
+- `employment_status = active`
+- `yearly_vacation_days` from the source "ден" column
+- `notes` with the source file and available "стаж" value
+
+Fields such as email, phone, job title, department, and start date are intentionally left blank so you can complete them manually in the app.
 
 ## Vacation calculation
 
@@ -80,3 +117,24 @@ The app calculates:
 - `number_of_days` is calculated in the frontend as calendar days from `start_date` through `end_date`, including weekends.
 
 The date counting logic is intentionally isolated in `src/utils/dates.ts` so it can later be changed to exclude weekends or holidays.
+
+## Language
+
+The app supports English and Macedonian.
+
+- Default language is Macedonian.
+- Use the `EN | MK` switcher in the header.
+- The selected language is saved in browser `localStorage`.
+- Database enum values stay in English, for example `vacation`, `approved`, and `pending`; only UI labels are translated.
+
+## Audit history
+
+Audit history is handled in Supabase with PostgreSQL triggers:
+
+- Creating an absence writes `created`.
+- Editing an absence writes `updated`.
+- Changing absence status writes `status_changed`.
+- Deleting an absence writes `deleted`.
+- Creating, editing, or deleting personal-hours records writes history in `personal_hours_history`.
+
+History rows keep JSON snapshots in `old_data` and `new_data`, so deleted records can still be reviewed later.

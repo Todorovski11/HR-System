@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Absence, Employee } from '../types/database';
 import type { AbsenceFormValues } from '../types/forms';
 import { countCalendarDays } from '../utils/dates';
+import { useTranslation } from 'react-i18next';
 
 const emptyAbsence: AbsenceFormValues = {
   employee_id: '',
@@ -29,6 +30,7 @@ export default function AbsenceForm({
   saving?: boolean;
 }) {
   const [values, setValues] = useState<AbsenceFormValues>({ ...emptyAbsence, employee_id: employeeId ?? '' });
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (absence) {
@@ -66,9 +68,9 @@ export default function AbsenceForm({
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Employee
+          {t('common.employee')}
           <select className="field" required value={values.employee_id} onChange={(event) => update('employee_id', event.target.value)}>
-            <option value="">Choose employee</option>
+            <option value="">{t('absences.chooseEmployee')}</option>
             {employees.map((employee) => (
               <option key={employee.id} value={employee.id}>
                 {employee.full_name}
@@ -77,46 +79,46 @@ export default function AbsenceForm({
           </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Type
+          {t('common.type')}
           <select className="field" value={values.type} onChange={(event) => update('type', event.target.value)}>
-            <option value="vacation">Vacation</option>
-            <option value="sick">Sick</option>
-            <option value="personal">Personal</option>
-            <option value="unpaid">Unpaid</option>
-            <option value="other">Other</option>
+            <option value="vacation">{t('absenceTypes.vacation')}</option>
+            <option value="sick">{t('absenceTypes.sick')}</option>
+            <option value="personal">{t('absenceTypes.personal')}</option>
+            <option value="unpaid">{t('absenceTypes.unpaid')}</option>
+            <option value="other">{t('absenceTypes.other')}</option>
           </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Start date
+          {t('common.startDate')}
           <input className="field" required type="date" value={values.start_date} onChange={(event) => update('start_date', event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          End date
+          {t('common.endDate')}
           <input className="field" required type="date" value={values.end_date} onChange={(event) => update('end_date', event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Days
+          {t('common.days')}
           <input className="field" readOnly value={values.number_of_days} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Status
+          {t('common.status')}
           <select className="field" value={values.status} onChange={(event) => update('status', event.target.value)}>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
+            <option value="pending">{t('statuses.pending')}</option>
+            <option value="approved">{t('statuses.approved')}</option>
+            <option value="rejected">{t('statuses.rejected')}</option>
           </select>
         </label>
       </div>
       <label className="grid gap-1 text-sm font-medium text-slate-700">
-        Reason / note
+        {t('absences.reason')}
         <textarea className="field min-h-24" value={values.reason} onChange={(event) => update('reason', event.target.value)} />
       </label>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <button type="button" className="btn-secondary" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button className="btn-primary" disabled={saving || !values.number_of_days}>
-          {saving ? 'Saving...' : 'Save absence'}
+          {saving ? t('common.saving') : t('absences.save')}
         </button>
       </div>
     </form>

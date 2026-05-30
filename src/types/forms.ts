@@ -21,3 +21,10 @@ export type AbsenceFormValues = {
   status: AbsenceStatus;
   reason: string;
 };
+
+export type PersonalHoursFormValues = {
+  employee_id: string;
+  date: string;
+  number_of_hours: number;
+  notes: string;
+};

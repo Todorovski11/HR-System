@@ -12,6 +12,10 @@ export function formatDate(date: string | null | undefined) {
   return date ? format(parseISO(date), 'MMM d, yyyy') : '-';
 }
 
+export function formatDateTime(date: string | null | undefined) {
+  return date ? format(parseISO(date), 'MMM d, yyyy HH:mm') : '-';
+}
+
 export function monthLabel(date: string) {
   return format(parseISO(date), 'MMMM yyyy');
 }

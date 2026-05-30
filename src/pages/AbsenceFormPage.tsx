@@ -6,12 +6,14 @@ import { supabase } from '../lib/supabase';
 import type { Absence, Employee } from '../types/database';
 import type { AbsenceFormValues } from '../types/forms';
 import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 
 export default function AbsenceFormPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [absence, setAbsence] = useState<Absence | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [saving, setSaving] = useState(false);
@@ -47,7 +49,7 @@ export default function AbsenceFormPage() {
 
   return (
     <div>
-      <PageHeader title={id ? 'Edit absence' : 'New absence'} description="Calendar days are counted from start date through end date, including weekends." />
+      <PageHeader title={id ? t('absences.edit') : t('absences.new')} description={t('absences.formDescription')} />
       <div className="rounded-lg border border-line bg-white p-4 shadow-sm">
         <AbsenceForm absence={absence} employees={employees} employeeId={employeeId} saving={saving} onCancel={() => navigate(-1)} onSubmit={save} />
       </div>

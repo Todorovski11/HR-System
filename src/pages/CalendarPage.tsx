@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
 import PageHeader from '../components/PageHeader';
 import { StatusBadge, TypeBadge } from '../components/StatusBadge';
@@ -8,6 +9,7 @@ import { formatDate, monthLabel } from '../utils/dates';
 
 export default function CalendarPage() {
   const [absences, setAbsences] = useState<AbsenceWithEmployee[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const load = async () => {
@@ -28,9 +30,9 @@ export default function CalendarPage() {
 
   return (
     <div>
-      <PageHeader title="Calendar" description="A mobile-friendly month list of all absences by start date." />
+      <PageHeader title={t('nav.calendar')} description={t('calendar.description')} />
       {absences.length === 0 ? (
-        <EmptyState title="No calendar records yet" />
+        <EmptyState title={t('calendar.empty')} />
       ) : (
         <div className="grid gap-6">
           {Object.entries(grouped).map(([month, items]) => (
@@ -41,9 +43,9 @@ export default function CalendarPage() {
                   <div key={absence.id} className="rounded-lg border border-line bg-white p-4 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="font-semibold text-ink">{absence.employees?.full_name ?? 'Unknown employee'}</p>
+                        <p className="font-semibold text-ink">{absence.employees?.full_name ?? t('common.unknownEmployee')}</p>
                         <p className="text-sm text-slate-600">
-                          {formatDate(absence.start_date)} - {formatDate(absence.end_date)} · {absence.number_of_days} days
+                          {formatDate(absence.start_date)} - {formatDate(absence.end_date)} · {absence.number_of_days} {t('common.days')}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">

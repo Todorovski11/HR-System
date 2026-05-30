@@ -1,4 +1,5 @@
 import type { AbsenceStatus, AbsenceType, EmploymentStatus } from '../types/database';
+import { useTranslation } from 'react-i18next';
 
 const statusClass: Record<AbsenceStatus | EmploymentStatus, string> = {
   pending: 'bg-amber-50 text-amber-800 ring-amber-200',
@@ -17,9 +18,11 @@ const typeClass: Record<AbsenceType, string> = {
 };
 
 export function StatusBadge({ value }: { value: AbsenceStatus | EmploymentStatus }) {
-  return <span className={`rounded-full px-2 py-1 text-xs font-semibold ring-1 ${statusClass[value]}`}>{value}</span>;
+  const { t } = useTranslation();
+  return <span className={`rounded-full px-2 py-1 text-xs font-semibold ring-1 ${statusClass[value]}`}>{t(`statuses.${value}`)}</span>;
 }
 
 export function TypeBadge({ value }: { value: AbsenceType }) {
-  return <span className={`rounded-full px-2 py-1 text-xs font-semibold ring-1 ${typeClass[value]}`}>{value}</span>;
+  const { t } = useTranslation();
+  return <span className={`rounded-full px-2 py-1 text-xs font-semibold ring-1 ${typeClass[value]}`}>{t(`absenceTypes.${value}`)}</span>;
 }

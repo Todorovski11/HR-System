@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Employee } from '../types/database';
 import type { EmployeeFormValues } from '../types/forms';
+import { useTranslation } from 'react-i18next';
 
 const emptyEmployee: EmployeeFormValues = {
   full_name: '',
@@ -28,6 +29,7 @@ export default function EmployeeForm({
   saving?: boolean;
 }) {
   const [values, setValues] = useState<EmployeeFormValues>({ ...emptyEmployee, yearly_vacation_days: defaultVacationDays });
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (employee) {
@@ -61,27 +63,27 @@ export default function EmployeeForm({
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Full name
+          {t('employees.fullName')}
           <input className="field" required value={values.full_name} onChange={(event) => update('full_name', event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Email
+          {t('common.email')}
           <input className="field" type="email" value={values.email} onChange={(event) => update('email', event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Phone
+          {t('common.phone')}
           <input className="field" value={values.phone} onChange={(event) => update('phone', event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Job title
+          {t('common.jobTitle')}
           <input className="field" value={values.job_title} onChange={(event) => update('job_title', event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Department
+          {t('common.department')}
           <input className="field" value={values.department} onChange={(event) => update('department', event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Start date
+          {t('common.startDate')}
           <input
             className="field"
             type="date"
@@ -90,14 +92,14 @@ export default function EmployeeForm({
           />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Status
+          {t('common.status')}
           <select className="field" value={values.employment_status} onChange={(event) => update('employment_status', event.target.value)}>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="active">{t('statuses.active')}</option>
+            <option value="inactive">{t('statuses.inactive')}</option>
           </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Yearly vacation days
+          {t('employees.yearlyVacationDays')}
           <input
             className="field"
             min={0}
@@ -108,15 +110,15 @@ export default function EmployeeForm({
         </label>
       </div>
       <label className="grid gap-1 text-sm font-medium text-slate-700">
-        Notes
+        {t('common.notes')}
         <textarea className="field min-h-24" value={values.notes} onChange={(event) => update('notes', event.target.value)} />
       </label>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <button type="button" className="btn-secondary" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button className="btn-primary" disabled={saving}>
-          {saving ? 'Saving...' : 'Save employee'}
+          {saving ? t('common.saving') : t('employees.save')}
         </button>
       </div>
     </form>

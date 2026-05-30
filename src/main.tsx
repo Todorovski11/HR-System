@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './hooks/useAuth';
+import './i18n';
 import './index.css';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -12,6 +13,8 @@ import AbsencesPage from './pages/AbsencesPage';
 import AbsenceFormPage from './pages/AbsenceFormPage';
 import CalendarPage from './pages/CalendarPage';
 import SettingsPage from './pages/SettingsPage';
+import PersonalHoursPage from './pages/PersonalHoursPage';
+import PersonalHoursFormPage from './pages/PersonalHoursFormPage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -25,6 +28,9 @@ const router = createBrowserRouter([
       { path: 'absences', element: <AbsencesPage /> },
       { path: 'absences/new', element: <AbsenceFormPage /> },
       { path: 'absences/:id/edit', element: <AbsenceFormPage /> },
+      { path: 'personal-hours', element: <PersonalHoursPage /> },
+      { path: 'personal-hours/new', element: <PersonalHoursFormPage /> },
+      { path: 'personal-hours/:id/edit', element: <PersonalHoursFormPage /> },
       { path: 'calendar', element: <CalendarPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
