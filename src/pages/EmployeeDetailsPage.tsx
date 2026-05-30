@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarPlus, Edit, Timer } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Edit, MapPinned, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
 import EmployeeForm from '../components/EmployeeForm';
@@ -70,6 +70,7 @@ export default function EmployeeDetailsPage() {
         job_title: values.job_title || null,
         department: values.department || null,
         employment_start_date: values.employment_start_date || null,
+        service_years: values.service_years === null ? null : Number(values.service_years),
         notes: values.notes || null,
       })
       .eq('id', employee.id);
@@ -109,6 +110,10 @@ export default function EmployeeDetailsPage() {
               <Timer size={18} />
               {t('personalHours.add')}
             </button>
+            <button className="btn-secondary" onClick={() => navigate('/department-schedule')}>
+              <MapPinned size={18} />
+              {t('departmentSchedule.add')}
+            </button>
             <button className="btn-primary" onClick={() => navigate(`/absences/new?employee=${employee.id}`)}>
               <CalendarPlus size={18} />
               {t('absences.add')}
@@ -147,6 +152,10 @@ export default function EmployeeDetailsPage() {
             <div>
               <dt className="text-slate-500">{t('common.startDate')}</dt>
               <dd className="font-medium text-ink">{formatDate(employee.employment_start_date)}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">{t('employees.serviceYears')}</dt>
+              <dd className="font-medium text-ink">{employee.service_years ?? '-'}</dd>
             </div>
             <div>
               <dt className="text-slate-500">{t('common.status')}</dt>

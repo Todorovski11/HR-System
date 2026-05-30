@@ -15,6 +15,7 @@ import CalendarPage from './pages/CalendarPage';
 import SettingsPage from './pages/SettingsPage';
 import PersonalHoursPage from './pages/PersonalHoursPage';
 import PersonalHoursFormPage from './pages/PersonalHoursFormPage';
+import DepartmentSchedulePage from './pages/DepartmentSchedulePage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -31,6 +32,7 @@ const router = createBrowserRouter([
       { path: 'personal-hours', element: <PersonalHoursPage /> },
       { path: 'personal-hours/new', element: <PersonalHoursFormPage /> },
       { path: 'personal-hours/:id/edit', element: <PersonalHoursFormPage /> },
+      { path: 'department-schedule', element: <DepartmentSchedulePage /> },
       { path: 'calendar', element: <CalendarPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/" replace /> },

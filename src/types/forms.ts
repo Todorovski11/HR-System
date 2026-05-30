@@ -8,6 +8,7 @@ export type EmployeeFormValues = {
   department: string;
   employment_start_date: string;
   employment_status: EmploymentStatus;
+  service_years: number | null;
   yearly_vacation_days: number;
   notes: string;
 };
@@ -26,5 +27,12 @@ export type PersonalHoursFormValues = {
   employee_id: string;
   date: string;
   number_of_hours: number;
+  notes: string;
+};
+
+export type DepartmentScheduleFormValues = {
+  employee_id: string;
+  date: string;
+  department: string;
   notes: string;
 };

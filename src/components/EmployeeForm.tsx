@@ -11,6 +11,7 @@ const emptyEmployee: EmployeeFormValues = {
   department: '',
   employment_start_date: '',
   employment_status: 'active',
+  service_years: null,
   yearly_vacation_days: 20,
   notes: '',
 };
@@ -41,6 +42,7 @@ export default function EmployeeForm({
         department: employee.department ?? '',
         employment_start_date: employee.employment_start_date ?? '',
         employment_status: employee.employment_status,
+        service_years: employee.service_years,
         yearly_vacation_days: employee.yearly_vacation_days,
         notes: employee.notes ?? '',
       });
@@ -49,7 +51,7 @@ export default function EmployeeForm({
     }
   }, [defaultVacationDays, employee]);
 
-  const update = (field: keyof EmployeeFormValues, value: string | number) => {
+  const update = (field: keyof EmployeeFormValues, value: string | number | null) => {
     setValues((current) => ({ ...current, [field]: value }));
   };
 
@@ -97,6 +99,16 @@ export default function EmployeeForm({
             <option value="active">{t('statuses.active')}</option>
             <option value="inactive">{t('statuses.inactive')}</option>
           </select>
+        </label>
+        <label className="grid gap-1 text-sm font-medium text-slate-700">
+          {t('employees.serviceYears')}
+          <input
+            className="field"
+            min={0}
+            type="number"
+            value={values.service_years ?? ''}
+            onChange={(event) => update('service_years', event.target.value === '' ? null : Number(event.target.value))}
+          />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           {t('employees.yearlyVacationDays')}

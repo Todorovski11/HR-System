@@ -5,6 +5,7 @@
     "employees": "Employees",
     "absences": "Absences",
     "personalHours": "Personal Hours",
+    "departmentSchedule": "Department Schedule",
     "calendar": "Calendar",
     "settings": "Settings"
   },
@@ -89,6 +90,16 @@
     "recentAbsences": "Recent absences",
     "recentPersonalHours": "Recent personal-hours records",
     "mostPersonalHours": "Employees with the most personal hours this month",
+    "attendanceByDepartment": "Attendance by department",
+    "attendanceByJobTitle": "Attendance by job title",
+    "attendanceByDepartmentAndJobTitle": "Attendance by department and job title",
+    "absentTodayDetails": "Absent employees today",
+    "atWorkNow": "At work now",
+    "missingNow": "Missing now",
+    "atWorkShort": "at work",
+    "missingShort": "missing",
+    "totalInGroup": "total",
+    "noAbsentToday": "No employees are absent today",
     "noEmployees": "No employees yet",
     "addEmployees": "Add employees to start tracking balances.",
     "noAbsences": "No absence records yet",
@@ -99,6 +110,7 @@
     "add": "Add Employee",
     "save": "Save employee",
     "fullName": "Full name",
+    "serviceYears": "Service years",
     "yearlyVacationDays": "Yearly vacation days",
     "searchPlaceholder": "Search by name or email",
     "noFound": "No employees found",
@@ -147,6 +159,14 @@
     "noFound": "No personal-hours records found",
     "deleteConfirm": "Delete this personal-hours record?",
     "validationHours": "Hours must be greater than 0 and not more than 24."
+  },
+  "departmentSchedule": {
+    "title": "Department Schedule",
+    "description": "Assign employees to a different department/object for a specific date.",
+    "add": "Add Department Schedule",
+    "save": "Save schedule",
+    "empty": "No department schedule records found",
+    "deleteConfirm": "Delete this department schedule record?"
   },
   "calendar": {
     "description": "A mobile-friendly month list of all absences by start date.",

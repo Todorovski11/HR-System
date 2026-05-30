@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Edit, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
 import EmployeeForm from '../components/EmployeeForm';
@@ -9,6 +9,10 @@ import { StatusBadge } from '../components/StatusBadge';
 import { supabase } from '../lib/supabase';
 import type { Employee } from '../types/database';
 import type { EmployeeFormValues } from '../types/forms';
+import { sortEmployeesByRoleOrder } from '../utils/employeeSort';
+
+type SortKey = 'department' | 'service_years';
+type SortDirection = 'asc' | 'desc';
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -17,6 +21,7 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [saving, setSaving] = useState(false);
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const { t } = useTranslation();
 
   const loadEmployees = async () => {
@@ -29,12 +34,40 @@ export default function EmployeesPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    return employees.filter((employee) => {
+    const matching = employees.filter((employee) => {
       const matchesSearch = `${employee.full_name} ${employee.email ?? ''}`.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = status === 'all' || employee.employment_status === status;
       return matchesSearch && matchesStatus;
     });
-  }, [employees, search, status]);
+    const base = sort ? [...matching] : sortEmployeesByRoleOrder(matching);
+
+    if (!sort) return base;
+
+    return base.sort((a, b) => {
+      const modifier = sort.direction === 'asc' ? 1 : -1;
+      if (sort.key === 'department') {
+        const departmentCompare = (a.department ?? '').localeCompare(b.department ?? '', 'mk-MK', { numeric: true });
+        return (departmentCompare || a.full_name.localeCompare(b.full_name, 'mk-MK')) * modifier;
+      }
+
+      const aYears = a.service_years ?? -1;
+      const bYears = b.service_years ?? -1;
+      return ((aYears - bYears) || a.full_name.localeCompare(b.full_name, 'mk-MK')) * modifier;
+    });
+  }, [employees, search, sort, status]);
+
+  const toggleSort = (key: SortKey) => {
+    setSort((current) => {
+      if (!current || current.key !== key) return { key, direction: 'asc' };
+      if (current.direction === 'asc') return { key, direction: 'desc' };
+      return null;
+    });
+  };
+
+  const sortIcon = (key: SortKey) => {
+    if (sort?.key !== key) return <ArrowUpDown size={14} />;
+    return sort.direction === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+  };
 
   const saveEmployee = async (values: EmployeeFormValues) => {
     setSaving(true);
@@ -45,6 +78,7 @@ export default function EmployeesPage() {
       job_title: values.job_title || null,
       department: values.department || null,
       employment_start_date: values.employment_start_date || null,
+      service_years: values.service_years === null ? null : Number(values.service_years),
       notes: values.notes || null,
     };
     if (editing) {
@@ -114,7 +148,18 @@ export default function EmployeesPage() {
                   <th className="px-4 py-3">{t('common.name')}</th>
                   <th className="px-4 py-3">{t('common.email')}</th>
                   <th className="px-4 py-3">{t('common.jobTitle')}</th>
-                  <th className="px-4 py-3">{t('common.department')}</th>
+                  <th className="px-4 py-3">
+                    <button className="inline-flex items-center gap-1 font-semibold uppercase" onClick={() => toggleSort('department')}>
+                      {t('common.department')}
+                      {sortIcon('department')}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3">
+                    <button className="inline-flex items-center gap-1 font-semibold uppercase" onClick={() => toggleSort('service_years')}>
+                      {t('employees.serviceYears')}
+                      {sortIcon('service_years')}
+                    </button>
+                  </th>
                   <th className="px-4 py-3">{t('common.status')}</th>
                   <th className="px-4 py-3 text-right">{t('common.actions')}</th>
                 </tr>
@@ -130,6 +175,7 @@ export default function EmployeesPage() {
                     <td className="px-4 py-3">{employee.email ?? '-'}</td>
                     <td className="px-4 py-3">{employee.job_title ?? '-'}</td>
                     <td className="px-4 py-3">{employee.department ?? '-'}</td>
+                    <td className="px-4 py-3">{employee.service_years ?? '-'}</td>
                     <td className="px-4 py-3">
                       <StatusBadge value={employee.employment_status} />
                     </td>
@@ -166,6 +212,7 @@ export default function EmployeesPage() {
                 </div>
                 <p className="mt-2 text-sm text-slate-600">{employee.email ?? t('employees.noEmail')}</p>
                 <p className="text-sm text-slate-600">{employee.job_title ?? t('employees.noJobTitle')}</p>
+                <p className="text-sm text-slate-600">{t('employees.serviceYears')}: {employee.service_years ?? '-'}</p>
                 <div className="mt-3 flex gap-2">
                   <button
                     className="btn-secondary flex-1"

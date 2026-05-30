@@ -7,15 +7,56 @@ import PageHeader from '../components/PageHeader';
 import StatCard from '../components/StatCard';
 import { StatusBadge, TypeBadge } from '../components/StatusBadge';
 import { supabase } from '../lib/supabase';
-import type { AbsenceWithEmployee, Employee, PersonalHoursWithEmployee } from '../types/database';
+import type { AbsenceWithEmployee, Employee, EmployeeDepartmentSchedule, PersonalHoursWithEmployee } from '../types/database';
 import { formatDate, isDateInRange } from '../utils/dates';
 import { employeeBalance, nextAbsenceDate } from '../utils/leave';
 import { hoursByEmployeeThisMonth, hoursInMonth, hoursInYear } from '../utils/personalHours';
+import { departmentOptions, normalizeDepartment } from '../utils/departments';
+
+function AttendanceBar({
+  label,
+  total,
+  atWork,
+  missing,
+}: {
+  label: string;
+  total: number;
+  atWork: number;
+  missing: number;
+}) {
+  const { t } = useTranslation();
+  const atWorkPercent = total > 0 ? Math.round((atWork / total) * 100) : 0;
+  const missingPercent = total > 0 ? Math.round((missing / total) * 100) : 0;
+
+  return (
+    <div className="rounded-lg border border-line bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-ink">{label}</p>
+          <p className="text-sm text-slate-500">{total} {t('dashboard.totalInGroup')}</p>
+        </div>
+        <div className="text-right text-sm">
+          <p className="font-semibold text-emerald-800">{atWork} {t('dashboard.atWorkShort')}</p>
+          <p className="font-semibold text-rose-700">{missing} {t('dashboard.missingShort')}</p>
+        </div>
+      </div>
+      <div className="flex h-3 overflow-hidden rounded-full bg-slate-100">
+        <div className="bg-emerald-600" style={{ width: `${atWorkPercent}%` }} />
+        <div className="bg-rose-500" style={{ width: `${missingPercent}%` }} />
+      </div>
+      <div className="mt-2 flex justify-between text-xs text-slate-500">
+        <span>{t('dashboard.atWorkNow')}: {atWork}</span>
+        <span>{t('dashboard.missingNow')}: {missing}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [absences, setAbsences] = useState<AbsenceWithEmployee[]>([]);
   const [personalHours, setPersonalHours] = useState<PersonalHoursWithEmployee[]>([]);
+  const [departmentSchedules, setDepartmentSchedules] = useState<EmployeeDepartmentSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
   const year = new Date().getFullYear();
@@ -23,14 +64,17 @@ export default function DashboardPage() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [employeeResult, absenceResult, personalHoursResult] = await Promise.all([
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const [employeeResult, absenceResult, personalHoursResult, scheduleResult] = await Promise.all([
         supabase.from('employees').select('*').order('full_name'),
         supabase.from('absences').select('*, employees(id, full_name, yearly_vacation_days)').order('start_date', { ascending: false }),
         supabase.from('personal_hours').select('*, employees(id, full_name)').order('date', { ascending: false }),
+        supabase.from('employee_department_schedules').select('*').eq('date', todayKey),
       ]);
       setEmployees(employeeResult.data ?? []);
       setAbsences((absenceResult.data ?? []) as AbsenceWithEmployee[]);
       setPersonalHours((personalHoursResult.data ?? []) as PersonalHoursWithEmployee[]);
+      setDepartmentSchedules(scheduleResult.data ?? []);
       setLoading(false);
     };
     void load();
@@ -57,6 +101,73 @@ export default function DashboardPage() {
       personalHoursThisYear: hoursInYear(personalHours, year),
     };
   }, [absences, employees, personalHours, today, year]);
+
+  const todayAbsences = useMemo(() => {
+    return absences.filter((absence) => absence.status === 'approved' && isDateInRange(today, absence.start_date, absence.end_date));
+  }, [absences, today]);
+
+  const absentEmployeeIds = useMemo(() => new Set(todayAbsences.map((absence) => absence.employee_id)), [todayAbsences]);
+
+  const departmentAttendance = useMemo(() => {
+    const activeEmployees = employees.filter((employee) => employee.employment_status === 'active');
+    const scheduleByEmployee = new Map(departmentSchedules.map((schedule) => [schedule.employee_id, schedule.department]));
+    return departmentOptions.map((department) => {
+      const departmentEmployees = activeEmployees.filter((employee) => {
+        const scheduledDepartment = scheduleByEmployee.get(employee.id);
+        return normalizeDepartment(scheduledDepartment ?? employee.department) === department;
+      });
+      const missing = departmentEmployees.filter((employee) => absentEmployeeIds.has(employee.id)).length;
+      return {
+        department,
+        total: departmentEmployees.length,
+        missing,
+        atWork: departmentEmployees.length - missing,
+      };
+    });
+  }, [absentEmployeeIds, departmentSchedules, employees]);
+
+  const jobTitleAttendance = useMemo(() => {
+    const groups = employees
+      .filter((employee) => employee.employment_status === 'active')
+      .reduce<Record<string, { label: string; total: number; missing: number; atWork: number }>>((result, employee) => {
+        const label = employee.job_title?.trim() || t('employees.noJobTitle');
+        result[label] = result[label] ?? { label, total: 0, missing: 0, atWork: 0 };
+        result[label].total += 1;
+        if (absentEmployeeIds.has(employee.id)) {
+          result[label].missing += 1;
+        } else {
+          result[label].atWork += 1;
+        }
+        return result;
+      }, {});
+
+    return Object.values(groups).sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'mk-MK'));
+  }, [absentEmployeeIds, employees, t]);
+
+  const departmentJobTitleAttendance = useMemo(() => {
+    const scheduleByEmployee = new Map(departmentSchedules.map((schedule) => [schedule.employee_id, schedule.department]));
+    return departmentOptions.map((department) => {
+      const groups = employees
+        .filter((employee) => employee.employment_status === 'active')
+        .filter((employee) => normalizeDepartment(scheduleByEmployee.get(employee.id) ?? employee.department) === department)
+        .reduce<Record<string, { label: string; total: number; missing: number; atWork: number }>>((result, employee) => {
+          const label = employee.job_title?.trim() || t('employees.noJobTitle');
+          result[label] = result[label] ?? { label, total: 0, missing: 0, atWork: 0 };
+          result[label].total += 1;
+          if (absentEmployeeIds.has(employee.id)) {
+            result[label].missing += 1;
+          } else {
+            result[label].atWork += 1;
+          }
+          return result;
+        }, {});
+
+      return {
+        department,
+        rows: Object.values(groups).sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'mk-MK')),
+      };
+    });
+  }, [absentEmployeeIds, departmentSchedules, employees, t]);
 
   const topPersonalHours = hoursByEmployeeThisMonth(personalHours, today)
     .slice(0, 5)
@@ -94,6 +205,103 @@ export default function DashboardPage() {
         <StatCard icon={Timer} label={t('dashboard.personalHoursThisMonth')} value={stats.personalHoursThisMonth} />
         <StatCard icon={Timer} label={t('dashboard.personalHoursThisYear')} value={stats.personalHoursThisYear} />
       </div>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold text-ink">{t('dashboard.attendanceByDepartment')}</h2>
+        <div className="grid gap-3 md:grid-cols-3">
+          {departmentAttendance.map((item) => (
+            <AttendanceBar
+              key={item.department}
+              label={item.department}
+              total={item.total}
+              atWork={item.atWork}
+              missing={item.missing}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold text-ink">{t('dashboard.absentTodayDetails')}</h2>
+        {todayAbsences.length === 0 ? (
+          <EmptyState title={t('dashboard.noAbsentToday')} />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {todayAbsences.map((absence) => {
+              const employee = employees.find((item) => item.id === absence.employee_id);
+              const scheduledDepartment = departmentSchedules.find((schedule) => schedule.employee_id === absence.employee_id)?.department;
+              return (
+                <div key={absence.id} className="rounded-lg border border-line bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-ink">{employee?.full_name ?? absence.employees?.full_name ?? t('common.unknownEmployee')}</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {normalizeDepartment(scheduledDepartment ?? employee?.department) || '-'} · {employee?.job_title ?? t('employees.noJobTitle')}
+                      </p>
+                    </div>
+                    <TypeBadge value={absence.type} />
+                  </div>
+                  <p className="mt-3 text-sm text-slate-600">
+                    {formatDate(absence.start_date)} - {formatDate(absence.end_date)} · {absence.number_of_days} {t('common.days')}
+                  </p>
+                  {absence.reason && <p className="mt-2 text-sm text-slate-600">{absence.reason}</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold text-ink">{t('dashboard.attendanceByJobTitle')}</h2>
+        {jobTitleAttendance.length === 0 ? (
+          <EmptyState title={t('dashboard.noEmployees')} />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {jobTitleAttendance.map((item) => (
+              <AttendanceBar key={item.label} label={item.label} total={item.total} atWork={item.atWork} missing={item.missing} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold text-ink">{t('dashboard.attendanceByDepartmentAndJobTitle')}</h2>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {departmentJobTitleAttendance.map((group) => (
+            <div key={group.department} className="rounded-lg border border-line bg-white p-4 shadow-sm">
+              <h3 className="mb-3 font-semibold text-ink">{group.department}</h3>
+              {group.rows.length === 0 ? (
+                <p className="text-sm text-slate-500">{t('dashboard.noEmployees')}</p>
+              ) : (
+                <div className="grid gap-3">
+                  {group.rows.map((row) => {
+                    const atWorkPercent = row.total > 0 ? Math.round((row.atWork / row.total) * 100) : 0;
+                    const missingPercent = row.total > 0 ? Math.round((row.missing / row.total) * 100) : 0;
+                    return (
+                      <div key={row.label}>
+                        <div className="mb-1 flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium text-ink">{row.label}</p>
+                          <p className="whitespace-nowrap text-xs text-slate-500">
+                            {row.atWork}/{row.total} {t('dashboard.atWorkShort')}
+                          </p>
+                        </div>
+                        <div className="flex h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div className="bg-emerald-600" style={{ width: `${atWorkPercent}%` }} />
+                          <div className="bg-rose-500" style={{ width: `${missingPercent}%` }} />
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {t('dashboard.missingNow')}: {row.missing}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold text-ink">{t('dashboard.vacationBalance')}</h2>

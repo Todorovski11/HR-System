@@ -23,6 +23,7 @@ export type Employee = {
   department: string | null;
   employment_start_date: string | null;
   employment_status: EmploymentStatus;
+  service_years: number | null;
   yearly_vacation_days: number;
   notes: string | null;
   created_at: string;
@@ -60,6 +61,21 @@ export type PersonalHours = {
 
 export type PersonalHoursWithEmployee = PersonalHours & {
   employees: Pick<Employee, 'id' | 'full_name'> | null;
+};
+
+export type EmployeeDepartmentSchedule = {
+  id: string;
+  employee_id: string;
+  date: string;
+  department: string;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EmployeeDepartmentScheduleWithEmployee = EmployeeDepartmentSchedule & {
+  employees: Pick<Employee, 'id' | 'full_name' | 'job_title' | 'department'> | null;
 };
 
 export type AbsenceHistory = {
@@ -132,6 +148,21 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'personal_hours_employee_id_fkey';
+            columns: ['employee_id'];
+            isOneToOne: false;
+            referencedRelation: 'employees';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      employee_department_schedules: {
+        Row: EmployeeDepartmentSchedule;
+        Insert: Omit<Partial<EmployeeDepartmentSchedule>, 'id' | 'created_at' | 'updated_at'> &
+          Pick<EmployeeDepartmentSchedule, 'employee_id' | 'date' | 'department'>;
+        Update: Partial<Omit<EmployeeDepartmentSchedule, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'employee_department_schedules_employee_id_fkey';
             columns: ['employee_id'];
             isOneToOne: false;
             referencedRelation: 'employees';

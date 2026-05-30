@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { CalendarDays, Clock3, LayoutDashboard, LogOut, Menu, Settings, Users, X, ClipboardList } from 'lucide-react';
+import { CalendarDays, Clock3, LayoutDashboard, LogOut, MapPinned, Menu, Settings, Users, X, ClipboardList } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/employees', labelKey: 'nav.employees', icon: Users },
   { to: '/absences', labelKey: 'nav.absences', icon: ClipboardList },
   { to: '/personal-hours', labelKey: 'nav.personalHours', icon: Clock3 },
+  { to: '/department-schedule', labelKey: 'nav.departmentSchedule', icon: MapPinned },
   { to: '/calendar', labelKey: 'nav.calendar', icon: CalendarDays },
   { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ];

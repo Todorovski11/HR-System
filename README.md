@@ -1,4 +1,4 @@
-# HR Leave Manager
+﻿# HR Leave Manager
 
 A small React + Vite + Tailwind CSS MVP for managing employees and tracking vacation days, sick days, personal days, unpaid days, and other absences. The app connects to Supabase for Auth, PostgreSQL, and Row Level Security.
 
@@ -107,6 +107,42 @@ The seed inserts employees only if the same `full_name` is not already present. 
 
 Fields such as email, phone, job title, department, and start date are intentionally left blank so you can complete them manually in the app.
 
+If you also need to apply departments from the Ѕвездички/Први стапки schedules and add the missing people from `data/РАСПОРЕД ЗА ГОДИШНИ ОДМОРИ.doc`, run:
+
+```sql
+-- Paste and run the contents of:
+-- supabase/import_departments_and_missing_employees.sql
+```
+
+That script updates existing employees by `full_name`, fills `department` with `Ѕвездички` or `Први стапки`, and inserts missing names with default vacation days set to `20` where the old Word document could not reliably expose the vacation-day column.
+
+To add the `Стаж` column and import the Бисерчиња employees, run:
+
+```sql
+-- Paste and run the contents of:
+-- supabase/add_service_years_and_karposh4.sql
+```
+
+This script adds `employees.service_years`, inserts the Бисерчиња employees with Macedonian Cyrillic names, sets `department = Бисерчиња`, and fills yearly vacation days from the provided list.
+
+To rename older labels already stored in Supabase, run:
+
+```sql
+-- Paste and run the contents of:
+-- supabase/rename_departments_and_job_titles.sql
+```
+
+This changes `karposh 2` to `Ѕвездички`, `karposh 3` to `Први стапки`, `karposh 4` to `Бисерчиња`, and `Техничка служба/слушба` to `Технички персонал`.
+
+To enable daily department/object assignments, run:
+
+```sql
+-- Paste and run the contents of:
+-- supabase/add_employee_department_schedules.sql
+```
+
+Use the **Распоред по објект / Department Schedule** page to assign a person to a specific object on a specific date. The dashboard uses that scheduled department for today before falling back to the employee's default department.
+
 ## Vacation calculation
 
 The app calculates:
@@ -138,3 +174,4 @@ Audit history is handled in Supabase with PostgreSQL triggers:
 - Creating, editing, or deleting personal-hours records writes history in `personal_hours_history`.
 
 History rows keep JSON snapshots in `old_data` and `new_data`, so deleted records can still be reviewed later.
+
