@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDown, ArrowUp, ArrowUpDown, Edit, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Download, Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
 import EmployeeForm from '../components/EmployeeForm';
@@ -9,10 +9,20 @@ import { StatusBadge } from '../components/StatusBadge';
 import { supabase } from '../lib/supabase';
 import type { Employee } from '../types/database';
 import type { EmployeeFormValues } from '../types/forms';
-import { sortEmployeesByRoleOrder } from '../utils/employeeSort';
+import { compareJobTitles, sortEmployeesByRoleOrder } from '../utils/employeeSort';
 
-type SortKey = 'department' | 'service_years';
+type SortKey = 'job_title' | 'department' | 'service_years';
 type SortDirection = 'asc' | 'desc';
+
+const excelMimeType = 'application/vnd.ms-excel;charset=utf-8;';
+
+function escapeExcelValue(value: string | number | null | undefined) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -45,6 +55,10 @@ export default function EmployeesPage() {
 
     return base.sort((a, b) => {
       const modifier = sort.direction === 'asc' ? 1 : -1;
+      if (sort.key === 'job_title') {
+        return (compareJobTitles(a.job_title, b.job_title) || a.full_name.localeCompare(b.full_name, 'mk-MK')) * modifier;
+      }
+
       if (sort.key === 'department') {
         const departmentCompare = (a.department ?? '').localeCompare(b.department ?? '', 'mk-MK', { numeric: true });
         return (departmentCompare || a.full_name.localeCompare(b.full_name, 'mk-MK')) * modifier;
@@ -55,6 +69,18 @@ export default function EmployeesPage() {
       return ((aYears - bYears) || a.full_name.localeCompare(b.full_name, 'mk-MK')) * modifier;
     });
   }, [employees, search, sort, status]);
+
+  const jobTitleOptions = useMemo(() => {
+    return Array.from(new Set(employees.map((employee) => employee.job_title).filter((value): value is string => Boolean(value)))).sort((a, b) =>
+      a.localeCompare(b, 'mk-MK'),
+    );
+  }, [employees]);
+
+  const departmentOptions = useMemo(() => {
+    return Array.from(new Set(employees.map((employee) => employee.department).filter((value): value is string => Boolean(value)))).sort((a, b) =>
+      a.localeCompare(b, 'mk-MK'),
+    );
+  }, [employees]);
 
   const toggleSort = (key: SortKey) => {
     setSort((current) => {
@@ -78,6 +104,7 @@ export default function EmployeesPage() {
       job_title: values.job_title || null,
       department: values.department || null,
       employment_start_date: values.employment_start_date || null,
+      employment_type: values.employment_type,
       service_years: values.service_years === null ? null : Number(values.service_years),
       notes: values.notes || null,
     };
@@ -98,16 +125,69 @@ export default function EmployeesPage() {
     await loadEmployees();
   };
 
+  const exportEmployees = () => {
+    const columns = [
+      { label: t('employees.fullName'), value: (employee: Employee) => employee.full_name },
+      { label: t('common.email'), value: (employee: Employee) => employee.email },
+      { label: t('common.phone'), value: (employee: Employee) => employee.phone },
+      { label: t('common.jobTitle'), value: (employee: Employee) => employee.job_title },
+      { label: t('common.department'), value: (employee: Employee) => employee.department },
+      { label: t('employees.serviceYears'), value: (employee: Employee) => employee.service_years },
+      { label: t('employees.employmentType'), value: (employee: Employee) => employee.employment_type ?? t('employmentTypes.regular') },
+      { label: t('common.startDate'), value: (employee: Employee) => employee.employment_start_date },
+      { label: t('common.status'), value: (employee: Employee) => t(`statuses.${employee.employment_status}`) },
+      { label: t('employees.yearlyVacationDays'), value: (employee: Employee) => employee.yearly_vacation_days },
+      { label: t('common.notes'), value: (employee: Employee) => employee.notes },
+      { label: 'ID', value: (employee: Employee) => employee.id },
+    ];
+
+    const header = columns.map((column) => `<th>${escapeExcelValue(column.label)}</th>`).join('');
+    const rows = employees
+      .map((employee) => {
+        const cells = columns.map((column) => `<td>${escapeExcelValue(column.value(employee))}</td>`).join('');
+        return `<tr>${cells}</tr>`;
+      })
+      .join('');
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <table border="1">
+      <thead><tr>${header}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </body>
+</html>`;
+
+    const blob = new Blob(['\ufeff', html], { type: excelMimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `employees-${new Date().toISOString().slice(0, 10)}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
       <PageHeader
         title={t('nav.employees')}
         description={t('employees.description')}
         action={
-          <button className="btn-primary" onClick={() => setShowForm(true)}>
-            <Plus size={18} />
-            {t('employees.add')}
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button className="btn-secondary" onClick={exportEmployees} disabled={employees.length === 0}>
+              <Download size={18} />
+              {t('employees.exportExcel')}
+            </button>
+            <button className="btn-primary" onClick={() => setShowForm(true)}>
+              <Plus size={18} />
+              {t('employees.add')}
+            </button>
+          </div>
         }
       />
 
@@ -116,6 +196,8 @@ export default function EmployeesPage() {
           <EmployeeForm
             employee={editing}
             saving={saving}
+            jobTitleOptions={jobTitleOptions}
+            departmentSelectOptions={departmentOptions}
             onCancel={() => {
               setEditing(null);
               setShowForm(false);
@@ -147,7 +229,12 @@ export default function EmployeesPage() {
                 <tr>
                   <th className="px-4 py-3">{t('common.name')}</th>
                   <th className="px-4 py-3">{t('common.email')}</th>
-                  <th className="px-4 py-3">{t('common.jobTitle')}</th>
+                  <th className="px-4 py-3">
+                    <button className="inline-flex items-center gap-1 font-semibold uppercase" onClick={() => toggleSort('job_title')}>
+                      {t('common.jobTitle')}
+                      {sortIcon('job_title')}
+                    </button>
+                  </th>
                   <th className="px-4 py-3">
                     <button className="inline-flex items-center gap-1 font-semibold uppercase" onClick={() => toggleSort('department')}>
                       {t('common.department')}
@@ -160,6 +247,7 @@ export default function EmployeesPage() {
                       {sortIcon('service_years')}
                     </button>
                   </th>
+                  <th className="px-4 py-3">{t('employees.employmentType')}</th>
                   <th className="px-4 py-3">{t('common.status')}</th>
                   <th className="px-4 py-3 text-right">{t('common.actions')}</th>
                 </tr>
@@ -176,6 +264,7 @@ export default function EmployeesPage() {
                     <td className="px-4 py-3">{employee.job_title ?? '-'}</td>
                     <td className="px-4 py-3">{employee.department ?? '-'}</td>
                     <td className="px-4 py-3">{employee.service_years ?? '-'}</td>
+                    <td className="px-4 py-3">{employee.employment_type ?? t('employmentTypes.regular')}</td>
                     <td className="px-4 py-3">
                       <StatusBadge value={employee.employment_status} />
                     </td>
@@ -212,6 +301,7 @@ export default function EmployeesPage() {
                 </div>
                 <p className="mt-2 text-sm text-slate-600">{employee.email ?? t('employees.noEmail')}</p>
                 <p className="text-sm text-slate-600">{employee.job_title ?? t('employees.noJobTitle')}</p>
+                <p className="text-sm text-slate-600">{employee.employment_type ?? t('employmentTypes.regular')}</p>
                 <p className="text-sm text-slate-600">{t('employees.serviceYears')}: {employee.service_years ?? '-'}</p>
                 <div className="mt-3 flex gap-2">
                   <button

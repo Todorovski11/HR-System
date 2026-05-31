@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarPlus, Edit, MapPinned, Timer } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CalendarPlus, Edit, MapPinned, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
 import EmployeeForm from '../components/EmployeeForm';
@@ -58,6 +58,42 @@ export default function EmployeeDetailsPage() {
 
   const balance = useMemo(() => (employee ? employeeBalance(employee, absences, year) : null), [absences, employee, year]);
 
+  const missingTotals = useMemo(() => {
+    const approvedAbsences = absences.filter((absence) => absence.status === 'approved');
+    return {
+      totalMissingDays: approvedAbsences.reduce((total, absence) => total + Number(absence.number_of_days || 0), 0),
+      totalMissingHours: personalHours.reduce((total, record) => total + Number(record.number_of_hours || 0), 0),
+    };
+  }, [absences, personalHours]);
+
+  const missingTimeline = useMemo(() => {
+    const absenceItems = absences.map((absence) => ({
+      id: `absence-${absence.id}`,
+      date: absence.start_date,
+      title: t(`absenceTypes.${absence.type}`),
+      period: `${formatDate(absence.start_date)} - ${formatDate(absence.end_date)}`,
+      amount: `${absence.number_of_days} ${t('common.days')}`,
+      note: absence.reason,
+      status: absence.status,
+      kind: 'absence' as const,
+      type: absence.type,
+    }));
+
+    const hourItems = personalHours.map((record) => ({
+      id: `hours-${record.id}`,
+      date: record.date,
+      title: t('personalHours.title'),
+      period: formatDate(record.date),
+      amount: `${record.number_of_hours}h`,
+      note: record.notes,
+      status: null,
+      kind: 'hours' as const,
+      type: null,
+    }));
+
+    return [...absenceItems, ...hourItems].sort((a, b) => b.date.localeCompare(a.date));
+  }, [absences, personalHours, t]);
+
   const saveEmployee = async (values: EmployeeFormValues) => {
     if (!employee) return;
     setSaving(true);
@@ -70,6 +106,7 @@ export default function EmployeeDetailsPage() {
         job_title: values.job_title || null,
         department: values.department || null,
         employment_start_date: values.employment_start_date || null,
+        employment_type: values.employment_type,
         service_years: values.service_years === null ? null : Number(values.service_years),
         notes: values.notes || null,
       })
@@ -124,7 +161,14 @@ export default function EmployeeDetailsPage() {
 
       {editing && (
         <div className="mb-6 rounded-lg border border-line bg-white p-4 shadow-sm">
-          <EmployeeForm employee={employee} saving={saving} onCancel={() => setEditing(false)} onSubmit={saveEmployee} />
+          <EmployeeForm
+            employee={employee}
+            saving={saving}
+            jobTitleOptions={employee.job_title ? [employee.job_title] : []}
+            departmentSelectOptions={employee.department ? [employee.department] : []}
+            onCancel={() => setEditing(false)}
+            onSubmit={saveEmployee}
+          />
         </div>
       )}
 
@@ -135,6 +179,8 @@ export default function EmployeeDetailsPage() {
         <StatCard icon={CalendarPlus} label={t('employees.sickThisYear')} value={balance?.sickUsed ?? 0} />
         <StatCard icon={Timer} label={t('personalHours.thisMonth')} value={hoursInMonth(personalHours)} />
         <StatCard icon={Timer} label={t('personalHours.thisYear')} value={hoursInYear(personalHours, year)} />
+        <StatCard icon={CalendarDays} label={t('employees.totalMissingDays')} value={missingTotals.totalMissingDays} />
+        <StatCard icon={Timer} label={t('employees.totalMissingHours')} value={missingTotals.totalMissingHours} />
       </div>
 
       <section className="mt-8 grid gap-4 lg:grid-cols-[360px_1fr]">
@@ -156,6 +202,10 @@ export default function EmployeeDetailsPage() {
             <div>
               <dt className="text-slate-500">{t('employees.serviceYears')}</dt>
               <dd className="font-medium text-ink">{employee.service_years ?? '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">{t('employees.employmentType')}</dt>
+              <dd className="font-medium text-ink">{employee.employment_type ?? t('employmentTypes.regular')}</dd>
             </div>
             <div>
               <dt className="text-slate-500">{t('common.status')}</dt>
@@ -219,6 +269,57 @@ export default function EmployeeDetailsPage() {
                 {record.notes && <p className="mt-3 text-sm text-slate-600">{record.notes}</p>}
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold text-ink">{t('employees.missingTimeHistory')}</h2>
+        {missingTimeline.length === 0 ? (
+          <EmptyState title={t('employees.noMissingTime')} />
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-line bg-white shadow-sm">
+            <div className="hidden overflow-x-auto md:block">
+              <table className="min-w-full divide-y divide-line text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">{t('common.date')}</th>
+                    <th className="px-4 py-3">{t('common.type')}</th>
+                    <th className="px-4 py-3">{t('employees.missingAmount')}</th>
+                    <th className="px-4 py-3">{t('common.status')}</th>
+                    <th className="px-4 py-3">{t('common.notes')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {missingTimeline.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-4 py-3">{item.period}</td>
+                      <td className="px-4 py-3">
+                        {item.kind === 'absence' && item.type ? <TypeBadge value={item.type} /> : <span className="font-medium text-ink">{item.title}</span>}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-ink">{item.amount}</td>
+                      <td className="px-4 py-3">{item.status ? <StatusBadge value={item.status} /> : '-'}</td>
+                      <td className="px-4 py-3">{item.note || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="grid gap-3 p-3 md:hidden">
+              {missingTimeline.map((item) => (
+                <div key={item.id} className="rounded-md border border-line p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-ink">{item.period}</p>
+                      <p className="mt-1 text-sm text-slate-600">{item.amount}</p>
+                    </div>
+                    {item.status ? <StatusBadge value={item.status} /> : null}
+                  </div>
+                  <div className="mt-2">{item.kind === 'absence' && item.type ? <TypeBadge value={item.type} /> : <span className="text-sm font-medium text-ink">{item.title}</span>}</div>
+                  <p className="mt-2 text-sm text-slate-600">{item.note || '-'}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>

@@ -12,6 +12,7 @@ import { formatDate, isDateInRange } from '../utils/dates';
 import { employeeBalance, nextAbsenceDate } from '../utils/leave';
 import { hoursByEmployeeThisMonth, hoursInMonth, hoursInYear } from '../utils/personalHours';
 import { departmentOptions, normalizeDepartment } from '../utils/departments';
+import { compareJobTitles } from '../utils/employeeSort';
 
 function AttendanceBar({
   label,
@@ -47,6 +48,62 @@ function AttendanceBar({
       <div className="mt-2 flex justify-between text-xs text-slate-500">
         <span>{t('dashboard.atWorkNow')}: {atWork}</span>
         <span>{t('dashboard.missingNow')}: {missing}</span>
+      </div>
+    </div>
+  );
+}
+
+function AttendancePie({
+  label,
+  total,
+  atWork,
+  missing,
+}: {
+  label: string;
+  total: number;
+  atWork: number;
+  missing: number;
+}) {
+  const { t } = useTranslation();
+  const atWorkPercent = total > 0 ? Math.round((atWork / total) * 100) : 0;
+  const missingPercent = total > 0 ? Math.round((missing / total) * 100) : 0;
+  const chartBackground =
+    total > 0
+      ? `conic-gradient(#059669 0 ${atWorkPercent}%, #e11d48 ${atWorkPercent}% 100%)`
+      : 'conic-gradient(#e2e8f0 0 100%)';
+
+  return (
+    <div className="rounded-lg border border-line bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className="relative h-28 w-28 shrink-0 rounded-full" style={{ background: chartBackground }}>
+          <div className="absolute inset-4 flex flex-col items-center justify-center rounded-full bg-white text-center shadow-inner">
+            <span className="text-2xl font-bold text-ink">{total}</span>
+            <span className="text-xs text-slate-500">{t('dashboard.totalInGroup')}</span>
+          </div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold text-ink">{label}</p>
+          <div className="mt-3 grid gap-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-slate-600">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                {t('dashboard.atWorkNow')}
+              </span>
+              <span className="font-semibold text-emerald-800">
+                {atWork} ({atWorkPercent}%)
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-slate-600">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+                {t('dashboard.missingNow')}
+              </span>
+              <span className="font-semibold text-rose-700">
+                {missing} ({missingPercent}%)
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -141,7 +198,7 @@ export default function DashboardPage() {
         return result;
       }, {});
 
-    return Object.values(groups).sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'mk-MK'));
+    return Object.values(groups).sort((a, b) => compareJobTitles(a.label, b.label) || b.total - a.total || a.label.localeCompare(b.label, 'mk-MK'));
   }, [absentEmployeeIds, employees, t]);
 
   const departmentJobTitleAttendance = useMemo(() => {
@@ -164,7 +221,7 @@ export default function DashboardPage() {
 
       return {
         department,
-        rows: Object.values(groups).sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'mk-MK')),
+        rows: Object.values(groups).sort((a, b) => compareJobTitles(a.label, b.label) || b.total - a.total || a.label.localeCompare(b.label, 'mk-MK')),
       };
     });
   }, [absentEmployeeIds, departmentSchedules, employees, t]);
@@ -210,7 +267,7 @@ export default function DashboardPage() {
         <h2 className="mb-3 text-lg font-semibold text-ink">{t('dashboard.attendanceByDepartment')}</h2>
         <div className="grid gap-3 md:grid-cols-3">
           {departmentAttendance.map((item) => (
-            <AttendanceBar
+            <AttendancePie
               key={item.department}
               label={item.department}
               total={item.total}

@@ -5,7 +5,7 @@
     "employees": "Employees",
     "absences": "Absences",
     "personalHours": "Personal Hours",
-    "departmentSchedule": "Department Schedule",
+    "departmentSchedule": "Object Schedule",
     "calendar": "Calendar",
     "settings": "Settings"
   },
@@ -30,7 +30,7 @@
     "phone": "Phone",
     "name": "Name",
     "jobTitle": "Job title",
-    "department": "Department",
+    "department": "Object",
     "startDate": "Start date",
     "endDate": "End date",
     "unknownEmployee": "Unknown employee",
@@ -50,6 +50,10 @@
     "rejected": "Rejected",
     "active": "Active",
     "inactive": "Inactive"
+  },
+  "employmentTypes": {
+    "regular": "Редовен работен однос",
+    "contract": "Договор на дело"
   },
   "absenceTypes": {
     "vacation": "Vacation",
@@ -90,9 +94,9 @@
     "recentAbsences": "Recent absences",
     "recentPersonalHours": "Recent personal-hours records",
     "mostPersonalHours": "Employees with the most personal hours this month",
-    "attendanceByDepartment": "Attendance by department",
+    "attendanceByDepartment": "Attendance by object",
     "attendanceByJobTitle": "Attendance by job title",
-    "attendanceByDepartmentAndJobTitle": "Attendance by department and job title",
+    "attendanceByDepartmentAndJobTitle": "Attendance by object and job title",
     "absentTodayDetails": "Absent employees today",
     "atWorkNow": "At work now",
     "missingNow": "Missing now",
@@ -108,9 +112,11 @@
   "employees": {
     "description": "Create and maintain employee records used by leave tracking.",
     "add": "Add Employee",
+    "exportExcel": "Export Excel",
     "save": "Save employee",
     "fullName": "Full name",
     "serviceYears": "Service years",
+    "employmentType": "Employment type",
     "yearlyVacationDays": "Yearly vacation days",
     "searchPlaceholder": "Search by name or email",
     "noFound": "No employees found",
@@ -125,6 +131,11 @@
     "noAbsences": "No absences for this employee",
     "personalHoursRecords": "Personal-hours records",
     "personalHoursHistory": "Personal-hours history",
+    "missingTimeHistory": "Missing time history",
+    "missingAmount": "Missing time",
+    "totalMissingDays": "Total missing days",
+    "totalMissingHours": "Total missing hours",
+    "noMissingTime": "No missing time records for this employee",
     "noPersonalHours": "No personal-hours records for this employee",
     "noHistory": "No audit history for this employee",
     "noEmail": "No email",
@@ -161,12 +172,17 @@
     "validationHours": "Hours must be greater than 0 and not more than 24."
   },
   "departmentSchedule": {
-    "title": "Department Schedule",
-    "description": "Assign employees to a different department/object for a specific date.",
-    "add": "Add Department Schedule",
+    "title": "Object Schedule",
+    "description": "Assign employees to a different object for a specific date.",
+    "add": "Add Object Schedule",
     "save": "Save schedule",
-    "empty": "No department schedule records found",
-    "deleteConfirm": "Delete this department schedule record?"
+    "empty": "No object schedule records found",
+    "deleteConfirm": "Delete this object schedule record?",
+    "weeklySpecialistCalendar": "Weekly specialist calendar",
+    "weeklySpecialistDescription": "Choose where professional associates and professional workers should work for each day of the week.",
+    "chooseWeek": "Choose week",
+    "notScheduled": "Not scheduled",
+    "noSpecialists": "No professional associates or professional workers found"
   },
   "calendar": {
     "description": "A mobile-friendly month list of all absences by start date.",

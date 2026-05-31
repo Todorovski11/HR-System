@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { Employee } from '../types/database';
 import type { EmployeeFormValues } from '../types/forms';
 import { useTranslation } from 'react-i18next';
+import { departmentOptions } from '../utils/departments';
+import { jobTitleOrder } from '../utils/employeeSort';
 
 const emptyEmployee: EmployeeFormValues = {
   full_name: '',
@@ -11,6 +13,7 @@ const emptyEmployee: EmployeeFormValues = {
   department: '',
   employment_start_date: '',
   employment_status: 'active',
+  employment_type: 'редовен работен однос',
   service_years: null,
   yearly_vacation_days: 20,
   notes: '',
@@ -22,15 +25,22 @@ export default function EmployeeForm({
   onSubmit,
   onCancel,
   saving,
+  jobTitleOptions = [],
+  departmentSelectOptions = [],
 }: {
   employee?: Employee | null;
   defaultVacationDays?: number;
   onSubmit: (values: EmployeeFormValues) => Promise<void>;
   onCancel: () => void;
   saving?: boolean;
+  jobTitleOptions?: string[];
+  departmentSelectOptions?: string[];
 }) {
   const [values, setValues] = useState<EmployeeFormValues>({ ...emptyEmployee, yearly_vacation_days: defaultVacationDays });
   const { t } = useTranslation();
+
+  const allJobTitleOptions = Array.from(new Set([...jobTitleOrder, ...jobTitleOptions].filter(Boolean)));
+  const allDepartmentOptions = Array.from(new Set([...departmentOptions, ...departmentSelectOptions].filter(Boolean)));
 
   useEffect(() => {
     if (employee) {
@@ -42,6 +52,7 @@ export default function EmployeeForm({
         department: employee.department ?? '',
         employment_start_date: employee.employment_start_date ?? '',
         employment_status: employee.employment_status,
+        employment_type: employee.employment_type ?? 'редовен работен однос',
         service_years: employee.service_years,
         yearly_vacation_days: employee.yearly_vacation_days,
         notes: employee.notes ?? '',
@@ -78,11 +89,25 @@ export default function EmployeeForm({
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           {t('common.jobTitle')}
-          <input className="field" value={values.job_title} onChange={(event) => update('job_title', event.target.value)} />
+          <select className="field" value={values.job_title} onChange={(event) => update('job_title', event.target.value)}>
+            <option value="">-</option>
+            {allJobTitleOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           {t('common.department')}
-          <input className="field" value={values.department} onChange={(event) => update('department', event.target.value)} />
+          <select className="field" value={values.department} onChange={(event) => update('department', event.target.value)}>
+            <option value="">-</option>
+            {allDepartmentOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           {t('common.startDate')}
@@ -98,6 +123,13 @@ export default function EmployeeForm({
           <select className="field" value={values.employment_status} onChange={(event) => update('employment_status', event.target.value)}>
             <option value="active">{t('statuses.active')}</option>
             <option value="inactive">{t('statuses.inactive')}</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-medium text-slate-700">
+          {t('employees.employmentType')}
+          <select className="field" value={values.employment_type} onChange={(event) => update('employment_type', event.target.value)}>
+            <option value="редовен работен однос">{t('employmentTypes.regular')}</option>
+            <option value="договор на дело">{t('employmentTypes.contract')}</option>
           </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">

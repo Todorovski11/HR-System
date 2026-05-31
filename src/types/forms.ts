@@ -1,4 +1,4 @@
-import type { AbsenceStatus, AbsenceType, EmploymentStatus } from './database';
+import type { AbsenceStatus, AbsenceType, EmploymentStatus, EmploymentType } from './database';
 
 export type EmployeeFormValues = {
   full_name: string;
@@ -8,6 +8,7 @@ export type EmployeeFormValues = {
   department: string;
   employment_start_date: string;
   employment_status: EmploymentStatus;
+  employment_type: EmploymentType;
   service_years: number | null;
   yearly_vacation_days: number;
   notes: string;

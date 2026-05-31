@@ -1,5 +1,6 @@
 export type ProfileRole = 'admin' | 'employee';
 export type EmploymentStatus = 'active' | 'inactive';
+export type EmploymentType = 'редовен работен однос' | 'договор на дело';
 export type AbsenceType = 'vacation' | 'sick' | 'personal' | 'unpaid' | 'other';
 export type AbsenceStatus = 'pending' | 'approved' | 'rejected';
 export type AbsenceHistoryAction = 'created' | 'updated' | 'status_changed' | 'deleted';
@@ -23,6 +24,7 @@ export type Employee = {
   department: string | null;
   employment_start_date: string | null;
   employment_status: EmploymentStatus;
+  employment_type: EmploymentType;
   service_years: number | null;
   yearly_vacation_days: number;
   notes: string | null;
