@@ -79,7 +79,8 @@
   "dashboard": {
     "description": "Преглед на вработени, отсуства, годишен одмор и приватни часови.",
     "totalEmployees": "Вкупно вработени",
-    "activeEmployees": "Активни вработени",
+    "activeEmployees": "На работа денес",
+    "inactiveEmployees": "Отсутни денес",
     "absentToday": "Вработени отсутни денес",
     "upcomingAbsences": "Претстојни отсуства",
     "pendingAbsences": "Отсуства во исчекување",

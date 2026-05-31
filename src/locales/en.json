@@ -79,7 +79,8 @@
   "dashboard": {
     "description": "Live overview of employees, absences, vacation balance, and personal hours.",
     "totalEmployees": "Total employees",
-    "activeEmployees": "Active employees",
+    "activeEmployees": "At work today",
+    "inactiveEmployees": "Out today",
     "absentToday": "Employees currently absent today",
     "upcomingAbsences": "Upcoming absences",
     "pendingAbsences": "Pending absences",

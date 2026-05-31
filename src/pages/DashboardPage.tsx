@@ -139,7 +139,12 @@ export default function DashboardPage() {
 
   const today = useMemo(() => new Date(), []);
   const stats = useMemo(() => {
-    const currentLeave = absences.filter((absence) => absence.status === 'approved' && isDateInRange(today, absence.start_date, absence.end_date));
+    const employedEmployees = employees.filter((employee) => employee.employment_status === 'active');
+    const employedEmployeeIds = new Set(employedEmployees.map((employee) => employee.id));
+    const currentLeave = absences.filter(
+      (absence) => absence.status === 'approved' && employedEmployeeIds.has(absence.employee_id) && isDateInRange(today, absence.start_date, absence.end_date),
+    );
+    const absentTodayIds = new Set(currentLeave.map((absence) => absence.employee_id));
     const pending = absences.filter((absence) => absence.status === 'pending');
     const upcoming = absences.filter((absence) => absence.status !== 'rejected' && absence.start_date >= today.toISOString().slice(0, 10));
     const approvedVacationThisMonth = absences.filter((absence) => {
@@ -149,8 +154,8 @@ export default function DashboardPage() {
 
     return {
       totalEmployees: employees.length,
-      activeEmployees: employees.filter((employee) => employee.employment_status === 'active').length,
-      currentLeave: currentLeave.length,
+      activeEmployees: employedEmployees.filter((employee) => !absentTodayIds.has(employee.id)).length,
+      inactiveEmployees: absentTodayIds.size,
       upcoming: upcoming.length,
       pending: pending.length,
       approvedVacationDaysThisMonth: approvedVacationThisMonth.reduce((total, absence) => total + absence.number_of_days, 0),
@@ -255,7 +260,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label={t('dashboard.totalEmployees')} value={stats.totalEmployees} />
         <StatCard icon={UserCheck} label={t('dashboard.activeEmployees')} value={stats.activeEmployees} />
-        <StatCard icon={Plane} label={t('dashboard.absentToday')} value={stats.currentLeave} />
+        <StatCard icon={Plane} label={t('dashboard.inactiveEmployees')} value={stats.inactiveEmployees} />
         <StatCard icon={Clock} label={t('dashboard.upcomingAbsences')} value={stats.upcoming} />
         <StatCard icon={Hourglass} label={t('dashboard.pendingAbsences')} value={stats.pending} />
         <StatCard icon={CalendarCheck} label={t('dashboard.approvedVacationThisMonth')} value={stats.approvedVacationDaysThisMonth} />
