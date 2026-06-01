@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, ArrowUpDown, Download, Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
@@ -7,9 +7,10 @@ import EmployeeForm from '../components/EmployeeForm';
 import PageHeader from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { supabase } from '../lib/supabase';
-import type { Employee } from '../types/database';
+import type { AbsenceWithEmployee, Employee } from '../types/database';
 import type { EmployeeFormValues } from '../types/forms';
 import { compareJobTitles, sortEmployeesByRoleOrder } from '../utils/employeeSort';
+import { isDateInRange } from '../utils/dates';
 
 type SortKey = 'job_title' | 'department' | 'service_years';
 type SortDirection = 'asc' | 'desc';
@@ -25,29 +26,55 @@ function escapeExcelValue(value: string | number | null | undefined) {
 }
 
 export default function EmployeesPage() {
+  const [searchParams] = useSearchParams();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [absences, setAbsences] = useState<AbsenceWithEmployee[]>([]);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [attendance, setAttendance] = useState('all');
   const [saving, setSaving] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const { t } = useTranslation();
+  const today = useMemo(() => new Date(), []);
 
   const loadEmployees = async () => {
-    const { data } = await supabase.from('employees').select('*').order('full_name');
-    setEmployees(data ?? []);
+    const [employeeResult, absenceResult] = await Promise.all([
+      supabase.from('employees').select('*').order('full_name'),
+      supabase.from('absences').select('*, employees(id, full_name, yearly_vacation_days)'),
+    ]);
+    setEmployees(employeeResult.data ?? []);
+    setAbsences((absenceResult.data ?? []) as AbsenceWithEmployee[]);
   };
 
   useEffect(() => {
     void loadEmployees();
   }, []);
 
+  useEffect(() => {
+    setSearch(searchParams.get('search') ?? '');
+    setStatus(searchParams.get('status') ?? 'all');
+    setAttendance(searchParams.get('attendance') ?? 'all');
+  }, [searchParams]);
+
+  const absentEmployeeIds = useMemo(() => {
+    return new Set(
+      absences
+        .filter((absence) => absence.status === 'approved' && isDateInRange(today, absence.start_date, absence.end_date))
+        .map((absence) => absence.employee_id),
+    );
+  }, [absences, today]);
+
   const filtered = useMemo(() => {
     const matching = employees.filter((employee) => {
       const matchesSearch = `${employee.full_name} ${employee.email ?? ''}`.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = status === 'all' || employee.employment_status === status;
-      return matchesSearch && matchesStatus;
+      const matchesAttendance =
+        attendance === 'all' ||
+        (attendance === 'present' && employee.employment_status === 'active' && !absentEmployeeIds.has(employee.id)) ||
+        (attendance === 'absent' && absentEmployeeIds.has(employee.id));
+      return matchesSearch && matchesStatus && matchesAttendance;
     });
     const base = sort ? [...matching] : sortEmployeesByRoleOrder(matching);
 
@@ -68,7 +95,7 @@ export default function EmployeesPage() {
       const bYears = b.service_years ?? -1;
       return ((aYears - bYears) || a.full_name.localeCompare(b.full_name, 'mk-MK')) * modifier;
     });
-  }, [employees, search, sort, status]);
+  }, [absentEmployeeIds, attendance, employees, search, sort, status]);
 
   const jobTitleOptions = useMemo(() => {
     return Array.from(new Set(employees.map((employee) => employee.job_title).filter((value): value is string => Boolean(value)))).sort((a, b) =>

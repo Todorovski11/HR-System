@@ -14,6 +14,22 @@ import { hoursByEmployeeThisMonth, hoursInMonth, hoursInYear } from '../utils/pe
 import { departmentOptions, normalizeDepartment } from '../utils/departments';
 import { compareJobTitles } from '../utils/employeeSort';
 
+function dateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function monthRange(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  return {
+    start: dateKey(new Date(year, month, 1)),
+    end: dateKey(new Date(year, month + 1, 0)),
+  };
+}
+
 function AttendanceBar({
   label,
   total,
@@ -121,7 +137,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const todayKey = new Date().toISOString().slice(0, 10);
+      const todayKey = dateKey(new Date());
       const [employeeResult, absenceResult, personalHoursResult, scheduleResult] = await Promise.all([
         supabase.from('employees').select('*').order('full_name'),
         supabase.from('absences').select('*, employees(id, full_name, yearly_vacation_days)').order('start_date', { ascending: false }),
@@ -138,6 +154,8 @@ export default function DashboardPage() {
   }, []);
 
   const today = useMemo(() => new Date(), []);
+  const currentMonth = monthRange(today);
+  const currentYear = { start: `${year}-01-01`, end: `${year}-12-31` };
   const stats = useMemo(() => {
     const employedEmployees = employees.filter((employee) => employee.employment_status === 'active');
     const employedEmployeeIds = new Set(employedEmployees.map((employee) => employee.id));
@@ -146,7 +164,7 @@ export default function DashboardPage() {
     );
     const absentTodayIds = new Set(currentLeave.map((absence) => absence.employee_id));
     const pending = absences.filter((absence) => absence.status === 'pending');
-    const upcoming = absences.filter((absence) => absence.status !== 'rejected' && absence.start_date >= today.toISOString().slice(0, 10));
+    const upcoming = absences.filter((absence) => absence.status !== 'rejected' && absence.start_date >= dateKey(today));
     const approvedVacationThisMonth = absences.filter((absence) => {
       const date = new Date(absence.start_date);
       return absence.status === 'approved' && absence.type === 'vacation' && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
@@ -258,14 +276,29 @@ export default function DashboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Users} label={t('dashboard.totalEmployees')} value={stats.totalEmployees} />
-        <StatCard icon={UserCheck} label={t('dashboard.activeEmployees')} value={stats.activeEmployees} />
+        <StatCard icon={Users} label={t('dashboard.totalEmployees')} value={stats.totalEmployees} to="/employees" />
+        <StatCard icon={UserCheck} label={t('dashboard.activeEmployees')} value={stats.activeEmployees} to="/employees?attendance=present" />
         <StatCard icon={Plane} label={t('dashboard.inactiveEmployees')} value={stats.inactiveEmployees} to="/absences?view=today" />
         <StatCard icon={Clock} label={t('dashboard.upcomingAbsences')} value={stats.upcoming} to="/absences?view=upcoming" />
         <StatCard icon={Hourglass} label={t('dashboard.pendingAbsences')} value={stats.pending} to="/absences?status=pending" />
-        <StatCard icon={CalendarCheck} label={t('dashboard.approvedVacationThisMonth')} value={stats.approvedVacationDaysThisMonth} />
-        <StatCard icon={Timer} label={t('dashboard.personalHoursThisMonth')} value={stats.personalHoursThisMonth} />
-        <StatCard icon={Timer} label={t('dashboard.personalHoursThisYear')} value={stats.personalHoursThisYear} />
+        <StatCard
+          icon={CalendarCheck}
+          label={t('dashboard.approvedVacationThisMonth')}
+          value={stats.approvedVacationDaysThisMonth}
+          to={`/absences?status=approved&type=vacation&from=${currentMonth.start}&to=${currentMonth.end}`}
+        />
+        <StatCard
+          icon={Timer}
+          label={t('dashboard.personalHoursThisMonth')}
+          value={stats.personalHoursThisMonth}
+          to={`/personal-hours?from=${currentMonth.start}&to=${currentMonth.end}`}
+        />
+        <StatCard
+          icon={Timer}
+          label={t('dashboard.personalHoursThisYear')}
+          value={stats.personalHoursThisYear}
+          to={`/personal-hours?from=${currentYear.start}&to=${currentYear.end}`}
+        />
       </div>
 
       <section className="mt-8">

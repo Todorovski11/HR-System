@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
@@ -9,6 +9,7 @@ import type { Employee, PersonalHoursWithEmployee } from '../types/database';
 import { formatDate } from '../utils/dates';
 
 export default function PersonalHoursPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [records, setRecords] = useState<PersonalHoursWithEmployee[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeeFilter, setEmployeeFilter] = useState('all');
@@ -29,6 +30,13 @@ export default function PersonalHoursPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    setEmployeeFilter(searchParams.get('employee') ?? 'all');
+    setSearch(searchParams.get('search') ?? '');
+    setFrom(searchParams.get('from') ?? '');
+    setTo(searchParams.get('to') ?? '');
+  }, [searchParams]);
 
   const filtered = useMemo(() => {
     return records.filter((record) => {
@@ -83,6 +91,7 @@ export default function PersonalHoursPage() {
             setSearch('');
             setFrom('');
             setTo('');
+            setSearchParams({});
           }}
         >
           {t('common.clear')}
