@@ -260,9 +260,9 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label={t('dashboard.totalEmployees')} value={stats.totalEmployees} />
         <StatCard icon={UserCheck} label={t('dashboard.activeEmployees')} value={stats.activeEmployees} />
-        <StatCard icon={Plane} label={t('dashboard.inactiveEmployees')} value={stats.inactiveEmployees} />
-        <StatCard icon={Clock} label={t('dashboard.upcomingAbsences')} value={stats.upcoming} />
-        <StatCard icon={Hourglass} label={t('dashboard.pendingAbsences')} value={stats.pending} />
+        <StatCard icon={Plane} label={t('dashboard.inactiveEmployees')} value={stats.inactiveEmployees} to="/absences?view=today" />
+        <StatCard icon={Clock} label={t('dashboard.upcomingAbsences')} value={stats.upcoming} to="/absences?view=upcoming" />
+        <StatCard icon={Hourglass} label={t('dashboard.pendingAbsences')} value={stats.pending} to="/absences?status=pending" />
         <StatCard icon={CalendarCheck} label={t('dashboard.approvedVacationThisMonth')} value={stats.approvedVacationDaysThisMonth} />
         <StatCard icon={Timer} label={t('dashboard.personalHoursThisMonth')} value={stats.personalHoursThisMonth} />
         <StatCard icon={Timer} label={t('dashboard.personalHoursThisYear')} value={stats.personalHoursThisYear} />

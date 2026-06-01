@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Edit, History, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
@@ -11,6 +11,7 @@ import type { AbsenceHistory, AbsenceStatus, AbsenceWithEmployee, Employee } fro
 import { formatDate } from '../utils/dates';
 
 export default function AbsencesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [absences, setAbsences] = useState<AbsenceWithEmployee[]>([]);
   const [history, setHistory] = useState<AbsenceHistory[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -21,6 +22,7 @@ export default function AbsencesPage() {
   const [to, setTo] = useState('');
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const { t } = useTranslation();
+  const todayKey = new Date().toISOString().slice(0, 10);
 
   const load = async () => {
     const [absenceResult, employeeResult, historyResult] = await Promise.all([
@@ -37,17 +39,49 @@ export default function AbsencesPage() {
     void load();
   }, []);
 
+  useEffect(() => {
+    const view = searchParams.get('view');
+    const status = searchParams.get('status');
+    const type = searchParams.get('type');
+    const employee = searchParams.get('employee');
+    const fromDate = searchParams.get('from');
+    const toDate = searchParams.get('to');
+
+    setEmployeeFilter(employee ?? 'all');
+    setTypeFilter(type ?? 'all');
+
+    if (view === 'today') {
+      setStatusFilter('approved');
+      setFrom(todayKey);
+      setTo(todayKey);
+      return;
+    }
+
+    if (view === 'upcoming') {
+      setStatusFilter('all');
+      setFrom(todayKey);
+      setTo('');
+      return;
+    }
+
+    setStatusFilter(status ?? 'all');
+    setFrom(fromDate ?? '');
+    setTo(toDate ?? '');
+  }, [searchParams, todayKey]);
+
   const filtered = useMemo(() => {
+    const view = searchParams.get('view');
     return absences.filter((absence) => {
       return (
         (employeeFilter === 'all' || absence.employee_id === employeeFilter) &&
         (statusFilter === 'all' || absence.status === statusFilter) &&
+        (view !== 'upcoming' || absence.status !== 'rejected') &&
         (typeFilter === 'all' || absence.type === typeFilter) &&
         (!from || absence.end_date >= from) &&
         (!to || absence.start_date <= to)
       );
     });
-  }, [absences, employeeFilter, from, statusFilter, to, typeFilter]);
+  }, [absences, employeeFilter, from, searchParams, statusFilter, to, typeFilter]);
 
   const selectedHistory = history.filter((item) => item.absence_id === selectedHistoryId);
 
@@ -112,6 +146,7 @@ export default function AbsencesPage() {
             setTypeFilter('all');
             setFrom('');
             setTo('');
+            setSearchParams({});
           }}
         >
           {t('common.clear')}
