@@ -8,6 +8,30 @@ export function countCalendarDays(startDate: string, endDate: string) {
   return Number.isFinite(days) && days > 0 ? days : 0;
 }
 
+export function countWorkingDays(startDate: string, endDate: string, holidayDates: string[] = []) {
+  if (!startDate || !endDate) return 0;
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
+  const totalDays = differenceInCalendarDays(end, start) + 1;
+  if (!Number.isFinite(totalDays) || totalDays <= 0) return 0;
+
+  const holidays = new Set(holidayDates);
+  let workingDays = 0;
+
+  for (let index = 0; index < totalDays; index += 1) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const day = date.getDay();
+    const key = format(date, 'yyyy-MM-dd');
+    const isWeekend = day === 0 || day === 6;
+    if (!isWeekend && !holidays.has(key)) {
+      workingDays += 1;
+    }
+  }
+
+  return workingDays;
+}
+
 export function formatDate(date: string | null | undefined) {
   return date ? format(parseISO(date), 'MMM d, yyyy') : '-';
 }

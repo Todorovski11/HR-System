@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Absence, Employee } from '../types/database';
 import type { AbsenceFormValues } from '../types/forms';
-import { countCalendarDays } from '../utils/dates';
+import { countWorkingDays } from '../utils/dates';
 import { useTranslation } from 'react-i18next';
 
 const emptyAbsence: AbsenceFormValues = {
@@ -18,6 +18,7 @@ export default function AbsenceForm({
   absence,
   employees,
   employeeId,
+  holidays = [],
   onSubmit,
   onCancel,
   saving,
@@ -25,6 +26,7 @@ export default function AbsenceForm({
   absence?: Absence | null;
   employees: Employee[];
   employeeId?: string | null;
+  holidays?: string[];
   onSubmit: (values: AbsenceFormValues) => Promise<void>;
   onCancel: () => void;
   saving?: boolean;
@@ -48,7 +50,7 @@ export default function AbsenceForm({
     }
   }, [absence, employeeId]);
 
-  const calculatedDays = useMemo(() => countCalendarDays(values.start_date, values.end_date), [values.end_date, values.start_date]);
+  const calculatedDays = useMemo(() => countWorkingDays(values.start_date, values.end_date, holidays), [holidays, values.end_date, values.start_date]);
 
   useEffect(() => {
     setValues((current) => ({ ...current, number_of_days: calculatedDays }));
@@ -90,11 +92,25 @@ export default function AbsenceForm({
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           {t('common.startDate')}
-          <input className="field" required type="date" value={values.start_date} onChange={(event) => update('start_date', event.target.value)} />
+          <input
+            className="field"
+            required
+            type="date"
+            value={values.start_date}
+            onChange={(event) => update('start_date', event.target.value)}
+            onInput={(event) => update('start_date', event.currentTarget.value)}
+          />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           {t('common.endDate')}
-          <input className="field" required type="date" value={values.end_date} onChange={(event) => update('end_date', event.target.value)} />
+          <input
+            className="field"
+            required
+            type="date"
+            value={values.end_date}
+            onChange={(event) => update('end_date', event.target.value)}
+            onInput={(event) => update('end_date', event.currentTarget.value)}
+          />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           {t('common.days')}
@@ -113,6 +129,7 @@ export default function AbsenceForm({
         {t('absences.reason')}
         <textarea className="field min-h-24" value={values.reason} onChange={(event) => update('reason', event.target.value)} />
       </label>
+      <p className="text-sm text-slate-500">{t('absences.workingDaysDescription')}</p>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <button type="button" className="btn-secondary" onClick={onCancel}>
           {t('common.cancel')}

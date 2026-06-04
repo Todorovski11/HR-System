@@ -150,7 +150,8 @@
     "save": "Save absence",
     "chooseEmployee": "Choose employee",
     "reason": "Reason / note",
-    "formDescription": "Calendar days are counted from start date through end date, including weekends.",
+    "formDescription": "Days are counted from Monday to Friday only. Weekends and configured holidays are skipped.",
+    "workingDaysDescription": "Vacation days are counted as Monday to Friday only. Weekends and configured holidays are skipped.",
     "noFound": "No absences found",
     "deleteConfirm": "Delete this absence record?",
     "history": "History",
@@ -195,6 +196,13 @@
     "defaultVacation": "Default yearly vacation days",
     "currentYear": "Current year",
     "defaultLanguage": "Default language",
+    "holidays": "Holidays",
+    "holidaysDescription": "Configured holidays are skipped when calculating vacation days.",
+    "holidayName": "Holiday name",
+    "addHoliday": "Add holiday",
+    "holidaySaved": "Holiday saved.",
+    "noHolidays": "No holidays added yet",
+    "deleteHolidayConfirm": "Delete {{name}}?",
     "saved": "Settings saved."
   }
 }

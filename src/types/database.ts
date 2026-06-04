@@ -112,6 +112,16 @@ export type AppSetting = {
   updated_at: string;
 };
 
+export type Holiday = {
+  id: string;
+  date: string;
+  name: string;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -204,6 +214,12 @@ export type Database = {
         Row: AppSetting;
         Insert: Partial<AppSetting> & Pick<AppSetting, 'key' | 'value'>;
         Update: Partial<AppSetting>;
+        Relationships: [];
+      };
+      holidays: {
+        Row: Holiday;
+        Insert: Omit<Partial<Holiday>, 'id' | 'created_at' | 'updated_at'> & Pick<Holiday, 'date' | 'name'>;
+        Update: Partial<Omit<Holiday, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
     };
