@@ -11,11 +11,17 @@ import type { AbsenceWithEmployee, Employee } from '../types/database';
 import type { EmployeeFormValues } from '../types/forms';
 import { compareJobTitles, sortEmployeesByRoleOrder } from '../utils/employeeSort';
 import { isDateInRange } from '../utils/dates';
+import { employeeVacationSummary } from '../utils/leave';
 
 type SortKey = 'job_title' | 'department' | 'service_years';
 type SortDirection = 'asc' | 'desc';
 
 const excelMimeType = 'application/vnd.ms-excel;charset=utf-8;';
+
+type EmployeeExportColumn = {
+  label: string;
+  value: (employee: Employee) => string | number | null | undefined;
+};
 
 function escapeExcelValue(value: string | number | null | undefined) {
   return String(value ?? '')
@@ -23,6 +29,38 @@ function escapeExcelValue(value: string | number | null | undefined) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function downloadEmployeesExcel(filename: string, employees: Employee[], columns: EmployeeExportColumn[]) {
+  const header = columns.map((column) => `<th>${escapeExcelValue(column.label)}</th>`).join('');
+  const rows = employees
+    .map((employee) => {
+      const cells = columns.map((column) => `<td>${escapeExcelValue(column.value(employee))}</td>`).join('');
+      return `<tr>${cells}</tr>`;
+    })
+    .join('');
+  const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <table border="1">
+      <thead><tr>${header}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </body>
+</html>`;
+
+  const blob = new Blob(['\ufeff', html], { type: excelMimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export default function EmployeesPage() {
@@ -38,6 +76,7 @@ export default function EmployeesPage() {
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
   const { t } = useTranslation();
   const today = useMemo(() => new Date(), []);
+  const year = today.getFullYear();
 
   const loadEmployees = async () => {
     const [employeeResult, absenceResult] = await Promise.all([
@@ -153,50 +192,38 @@ export default function EmployeesPage() {
   };
 
   const exportEmployees = () => {
-    const columns = [
+    const columns: EmployeeExportColumn[] = [
       { label: t('employees.fullName'), value: (employee: Employee) => employee.full_name },
       { label: t('common.email'), value: (employee: Employee) => employee.email },
       { label: t('common.phone'), value: (employee: Employee) => employee.phone },
       { label: t('common.jobTitle'), value: (employee: Employee) => employee.job_title },
       { label: t('common.department'), value: (employee: Employee) => employee.department },
       { label: t('employees.serviceYears'), value: (employee: Employee) => employee.service_years },
+      { label: t('employees.spentVacationDays'), value: (employee: Employee) => employeeVacationSummary(employee, absences, year, today).spentVacationDays },
+      { label: t('employees.availableFutureVacationDays'), value: (employee: Employee) => employeeVacationSummary(employee, absences, year, today).availableFutureVacationDays },
       { label: t('employees.employmentType'), value: (employee: Employee) => employee.employment_type ?? t('employmentTypes.regular') },
       { label: t('common.startDate'), value: (employee: Employee) => employee.employment_start_date },
       { label: t('common.status'), value: (employee: Employee) => t(`statuses.${employee.employment_status}`) },
       { label: t('employees.yearlyVacationDays'), value: (employee: Employee) => employee.yearly_vacation_days },
       { label: t('common.notes'), value: (employee: Employee) => employee.notes },
-      { label: 'ID', value: (employee: Employee) => employee.id },
     ];
 
-    const header = columns.map((column) => `<th>${escapeExcelValue(column.label)}</th>`).join('');
-    const rows = employees
-      .map((employee) => {
-        const cells = columns.map((column) => `<td>${escapeExcelValue(column.value(employee))}</td>`).join('');
-        return `<tr>${cells}</tr>`;
-      })
-      .join('');
-    const html = `<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-  </head>
-  <body>
-    <table border="1">
-      <thead><tr>${header}</tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </body>
-</html>`;
+    downloadEmployeesExcel(`employees-${new Date().toISOString().slice(0, 10)}.xls`, employees, columns);
+  };
 
-    const blob = new Blob(['\ufeff', html], { type: excelMimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `employees-${new Date().toISOString().slice(0, 10)}.xls`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+  const exportVacationEmployees = () => {
+    const columns: EmployeeExportColumn[] = [
+      { label: t('employees.fullName'), value: (employee: Employee) => employee.full_name },
+      { label: t('common.jobTitle'), value: (employee: Employee) => employee.job_title },
+      { label: t('common.department'), value: (employee: Employee) => employee.department },
+      { label: t('employees.serviceYears'), value: (employee: Employee) => employee.service_years },
+      { label: t('employees.spentVacationDays'), value: (employee: Employee) => employeeVacationSummary(employee, absences, year, today).spentVacationDays },
+      { label: t('employees.availableFutureVacationDays'), value: (employee: Employee) => employeeVacationSummary(employee, absences, year, today).availableFutureVacationDays },
+      { label: t('employees.employmentType'), value: (employee: Employee) => employee.employment_type ?? t('employmentTypes.regular') },
+      { label: t('employees.yearlyAllowance'), value: (employee: Employee) => employee.yearly_vacation_days },
+    ];
+
+    downloadEmployeesExcel(`odmor-export-${new Date().toISOString().slice(0, 10)}.xls`, employees, columns);
   };
 
   return (
@@ -209,6 +236,10 @@ export default function EmployeesPage() {
             <button className="btn-secondary" onClick={exportEmployees} disabled={employees.length === 0}>
               <Download size={18} />
               {t('employees.exportExcel')}
+            </button>
+            <button className="btn-secondary" onClick={exportVacationEmployees} disabled={employees.length === 0}>
+              <Download size={18} />
+              {t('employees.exportVacationExcel')}
             </button>
             <button className="btn-primary" onClick={() => setShowForm(true)}>
               <Plus size={18} />
@@ -274,80 +305,92 @@ export default function EmployeesPage() {
                       {sortIcon('service_years')}
                     </button>
                   </th>
+                  <th className="px-4 py-3">{t('employees.spentVacationDays')}</th>
+                  <th className="px-4 py-3">{t('employees.availableFutureVacationDays')}</th>
                   <th className="px-4 py-3">{t('employees.employmentType')}</th>
                   <th className="px-4 py-3">{t('common.status')}</th>
                   <th className="px-4 py-3 text-right">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {filtered.map((employee) => (
-                  <tr key={employee.id}>
-                    <td className="px-4 py-3 font-medium text-ink">
-                      <Link className="hover:text-emerald-700" to={`/employees/${employee.id}`}>
-                        {employee.full_name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">{employee.email ?? '-'}</td>
-                    <td className="px-4 py-3">{employee.job_title ?? '-'}</td>
-                    <td className="px-4 py-3">{employee.department ?? '-'}</td>
-                    <td className="px-4 py-3">{employee.service_years ?? '-'}</td>
-                    <td className="px-4 py-3">{employee.employment_type ?? t('employmentTypes.regular')}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge value={employee.employment_status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          className="btn-secondary px-3"
-                          onClick={() => {
-                            setEditing(employee);
-                            setShowForm(true);
-                          }}
-                          aria-label={t('common.edit')}
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button className="btn-secondary px-3 text-rose-700" onClick={() => void deleteEmployee(employee)} aria-label={t('common.delete')}>
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((employee) => {
+                  const vacationSummary = employeeVacationSummary(employee, absences, year, today);
+                  return (
+                    <tr key={employee.id}>
+                      <td className="px-4 py-3 font-medium text-ink">
+                        <Link className="hover:text-emerald-700" to={`/employees/${employee.id}`}>
+                          {employee.full_name}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">{employee.email ?? '-'}</td>
+                      <td className="px-4 py-3">{employee.job_title ?? '-'}</td>
+                      <td className="px-4 py-3">{employee.department ?? '-'}</td>
+                      <td className="px-4 py-3">{employee.service_years ?? '-'}</td>
+                      <td className="px-4 py-3">{vacationSummary.spentVacationDays}</td>
+                      <td className="px-4 py-3">{vacationSummary.availableFutureVacationDays}</td>
+                      <td className="px-4 py-3">{employee.employment_type ?? t('employmentTypes.regular')}</td>
+                      <td className="px-4 py-3">
+                        <StatusBadge value={employee.employment_status} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            className="btn-secondary px-3"
+                            onClick={() => {
+                              setEditing(employee);
+                              setShowForm(true);
+                            }}
+                            aria-label={t('common.edit')}
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button className="btn-secondary px-3 text-rose-700" onClick={() => void deleteEmployee(employee)} aria-label={t('common.delete')}>
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
           <div className="grid gap-3 p-3 md:hidden">
-            {filtered.map((employee) => (
-              <div key={employee.id} className="rounded-md border border-line p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <Link className="font-semibold text-ink" to={`/employees/${employee.id}`}>
-                    {employee.full_name}
-                  </Link>
-                  <StatusBadge value={employee.employment_status} />
+            {filtered.map((employee) => {
+              const vacationSummary = employeeVacationSummary(employee, absences, year, today);
+              return (
+                <div key={employee.id} className="rounded-md border border-line p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <Link className="font-semibold text-ink" to={`/employees/${employee.id}`}>
+                      {employee.full_name}
+                    </Link>
+                    <StatusBadge value={employee.employment_status} />
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">{employee.email ?? t('employees.noEmail')}</p>
+                  <p className="text-sm text-slate-600">{employee.job_title ?? t('employees.noJobTitle')}</p>
+                  <p className="text-sm text-slate-600">{employee.employment_type ?? t('employmentTypes.regular')}</p>
+                  <p className="text-sm text-slate-600">{t('employees.serviceYears')}: {employee.service_years ?? '-'}</p>
+                  <p className="text-sm text-slate-600">{t('employees.spentVacationDays')}: {vacationSummary.spentVacationDays}</p>
+                  <p className="text-sm text-slate-600">{t('employees.availableFutureVacationDays')}: {vacationSummary.availableFutureVacationDays}</p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      className="btn-secondary flex-1"
+                      onClick={() => {
+                        setEditing(employee);
+                        setShowForm(true);
+                      }}
+                    >
+                      <Edit size={16} />
+                      {t('common.edit')}
+                    </button>
+                    <button className="btn-secondary flex-1 text-rose-700" onClick={() => void deleteEmployee(employee)}>
+                      <Trash2 size={16} />
+                      {t('common.delete')}
+                    </button>
+                  </div>
                 </div>
-                <p className="mt-2 text-sm text-slate-600">{employee.email ?? t('employees.noEmail')}</p>
-                <p className="text-sm text-slate-600">{employee.job_title ?? t('employees.noJobTitle')}</p>
-                <p className="text-sm text-slate-600">{employee.employment_type ?? t('employmentTypes.regular')}</p>
-                <p className="text-sm text-slate-600">{t('employees.serviceYears')}: {employee.service_years ?? '-'}</p>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    className="btn-secondary flex-1"
-                    onClick={() => {
-                      setEditing(employee);
-                      setShowForm(true);
-                    }}
-                  >
-                    <Edit size={16} />
-                    {t('common.edit')}
-                  </button>
-                  <button className="btn-secondary flex-1 text-rose-700" onClick={() => void deleteEmployee(employee)}>
-                    <Trash2 size={16} />
-                    {t('common.delete')}
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

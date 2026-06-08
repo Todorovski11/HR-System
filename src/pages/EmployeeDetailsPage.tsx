@@ -12,7 +12,7 @@ import { supabase } from '../lib/supabase';
 import type { Absence, AbsenceHistory, Employee, PersonalHours, PersonalHoursHistory } from '../types/database';
 import type { EmployeeFormValues } from '../types/forms';
 import { formatDate } from '../utils/dates';
-import { employeeBalance } from '../utils/leave';
+import { employeeBalance, employeeVacationSummary } from '../utils/leave';
 import { hoursInMonth, hoursInYear } from '../utils/personalHours';
 
 export default function EmployeeDetailsPage() {
@@ -57,6 +57,7 @@ export default function EmployeeDetailsPage() {
   }, [id]);
 
   const balance = useMemo(() => (employee ? employeeBalance(employee, absences, year) : null), [absences, employee, year]);
+  const vacationSummary = useMemo(() => (employee ? employeeVacationSummary(employee, absences, year) : null), [absences, employee, year]);
 
   const missingTotals = useMemo(() => {
     const approvedAbsences = absences.filter((absence) => absence.status === 'approved');
@@ -174,8 +175,9 @@ export default function EmployeeDetailsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard icon={CalendarPlus} label={t('employees.yearlyAllowance')} value={employee.yearly_vacation_days} />
-        <StatCard icon={CalendarPlus} label={t('employees.usedVacation')} value={balance?.vacationUsed ?? 0} />
-        <StatCard icon={CalendarPlus} label={t('employees.remainingVacation')} value={balance?.vacationRemaining ?? 0} />
+        <StatCard icon={CalendarDays} label={t('employees.spentVacationDays')} value={vacationSummary?.spentVacationDays ?? 0} />
+        <StatCard icon={CalendarPlus} label={t('employees.plannedFutureVacationDays')} value={vacationSummary?.plannedFutureVacationDays ?? 0} />
+        <StatCard icon={CalendarPlus} label={t('employees.availableFutureVacationDays')} value={vacationSummary?.availableFutureVacationDays ?? 0} />
         <StatCard icon={CalendarPlus} label={t('employees.sickThisYear')} value={balance?.sickUsed ?? 0} />
         <StatCard icon={Timer} label={t('personalHours.thisMonth')} value={hoursInMonth(personalHours)} />
         <StatCard icon={Timer} label={t('personalHours.thisYear')} value={hoursInYear(personalHours, year)} />

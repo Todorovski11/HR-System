@@ -22,6 +22,26 @@ export function employeeBalance(employee: Employee, absences: Absence[], year: n
   };
 }
 
+export function employeeVacationSummary(employee: Employee, absences: Absence[], year: number, today = new Date()) {
+  const todayKey = today.toISOString().slice(0, 10);
+  const employeeVacationAbsences = absences.filter((absence) => {
+    return absence.employee_id === employee.id && absence.type === 'vacation' && absence.start_date.slice(0, 4) === String(year);
+  });
+  const spentVacationDays = employeeVacationAbsences
+    .filter((absence) => absence.status === 'approved' && absence.start_date <= todayKey)
+    .reduce((total, absence) => total + Number(absence.number_of_days || 0), 0);
+  const plannedFutureVacationDays = employeeVacationAbsences
+    .filter((absence) => absence.status !== 'rejected' && absence.start_date > todayKey)
+    .reduce((total, absence) => total + Number(absence.number_of_days || 0), 0);
+  const availableFutureVacationDays = Math.max(employee.yearly_vacation_days - spentVacationDays - plannedFutureVacationDays, 0);
+
+  return {
+    spentVacationDays,
+    plannedFutureVacationDays,
+    availableFutureVacationDays,
+  };
+}
+
 export function nextAbsenceDate(employeeId: string, absences: Absence[]) {
   const today = new Date().toISOString().slice(0, 10);
   return absences
