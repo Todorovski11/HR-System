@@ -7,7 +7,7 @@ import EmployeeForm from '../components/EmployeeForm';
 import PageHeader from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { supabase } from '../lib/supabase';
-import type { AbsenceWithEmployee, Employee } from '../types/database';
+import type { AbsenceType, AbsenceWithEmployee, Employee } from '../types/database';
 import type { EmployeeFormValues } from '../types/forms';
 import { compareJobTitles, sortEmployeesByRoleOrder } from '../utils/employeeSort';
 import { isDateInRange } from '../utils/dates';
@@ -61,6 +61,19 @@ function downloadEmployeesExcel(filename: string, employees: Employee[], columns
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function absenceDateRanges(employee: Employee, absences: AbsenceWithEmployee[], type: AbsenceType, year: number) {
+  return absences
+    .filter((absence) => {
+      return absence.employee_id === employee.id && absence.type === type && absence.status === 'approved' && absence.start_date.slice(0, 4) === String(year);
+    })
+    .sort((a, b) => a.start_date.localeCompare(b.start_date))
+    .map((absence) => {
+      const range = absence.start_date === absence.end_date ? absence.start_date : `${absence.start_date} - ${absence.end_date}`;
+      return `${range} (${absence.number_of_days})`;
+    })
+    .join('; ');
 }
 
 export default function EmployeesPage() {
@@ -217,10 +230,14 @@ export default function EmployeesPage() {
       { label: t('common.jobTitle'), value: (employee: Employee) => employee.job_title },
       { label: t('common.department'), value: (employee: Employee) => employee.department },
       { label: t('employees.serviceYears'), value: (employee: Employee) => employee.service_years },
+      { label: t('employees.yearlyAllowance'), value: (employee: Employee) => employee.yearly_vacation_days },
       { label: t('employees.spentVacationDays'), value: (employee: Employee) => employeeVacationSummary(employee, absences, year, today).spentVacationDays },
       { label: t('employees.availableFutureVacationDays'), value: (employee: Employee) => employeeVacationSummary(employee, absences, year, today).availableFutureVacationDays },
-      { label: t('employees.employmentType'), value: (employee: Employee) => employee.employment_type ?? t('employmentTypes.regular') },
-      { label: t('employees.yearlyAllowance'), value: (employee: Employee) => employee.yearly_vacation_days },
+      { label: `${t('absenceTypes.vacation')} - ${t('common.dates')}`, value: (employee: Employee) => absenceDateRanges(employee, absences, 'vacation', year) },
+      { label: `${t('absenceTypes.sick')} - ${t('common.dates')}`, value: (employee: Employee) => absenceDateRanges(employee, absences, 'sick', year) },
+      { label: `${t('absenceTypes.personal')} - ${t('common.dates')}`, value: (employee: Employee) => absenceDateRanges(employee, absences, 'personal', year) },
+      { label: `${t('absenceTypes.unpaid')} - ${t('common.dates')}`, value: (employee: Employee) => absenceDateRanges(employee, absences, 'unpaid', year) },
+      { label: `${t('absenceTypes.other')} - ${t('common.dates')}`, value: (employee: Employee) => absenceDateRanges(employee, absences, 'other', year) },
     ];
 
     downloadEmployeesExcel(`odmor-export-${new Date().toISOString().slice(0, 10)}.xls`, employees, columns);
