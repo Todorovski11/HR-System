@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Edit, History, Plus, Trash2 } from 'lucide-react';
+import { Download, Edit, History, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
 import HistoryList from '../components/HistoryList';
@@ -15,6 +15,11 @@ function dateKey(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function csvCell(value: string | number | null | undefined) {
+  const text = String(value ?? '');
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 export default function AbsencesPage() {
@@ -91,6 +96,71 @@ export default function AbsencesPage() {
   }, [absences, employeeFilter, from, searchParams, statusFilter, to, typeFilter]);
 
   const selectedHistory = history.filter((item) => item.absence_id === selectedHistoryId);
+  const currentYear = new Date().getFullYear();
+  const currentYearStart = `${currentYear}-01-01`;
+  const currentYearEnd = `${currentYear}-12-31`;
+
+  const exportVacationCsv = () => {
+    const vacationAbsences = absences
+      .filter((absence) => {
+        return (
+          absence.type === 'vacation' &&
+          absence.status === 'approved' &&
+          absence.start_date <= currentYearEnd &&
+          absence.end_date >= currentYearStart
+        );
+      })
+      .sort((a, b) => {
+        const employeeCompare = (a.employees?.full_name ?? '').localeCompare(b.employees?.full_name ?? '');
+        return employeeCompare || a.start_date.localeCompare(b.start_date);
+      });
+
+    const vacationCounts = new Map<string, number>();
+    const totalDaysByEmployee = new Map<string, number>();
+
+    vacationAbsences.forEach((absence) => {
+      const employeeKey = absence.employee_id;
+      totalDaysByEmployee.set(employeeKey, (totalDaysByEmployee.get(employeeKey) ?? 0) + absence.number_of_days);
+    });
+
+    const rows = vacationAbsences.map((absence) => {
+      const employeeKey = absence.employee_id;
+      const vacationNumber = (vacationCounts.get(employeeKey) ?? 0) + 1;
+      vacationCounts.set(employeeKey, vacationNumber);
+
+      return [
+        absence.employees?.full_name ?? t('common.unknownEmployee'),
+        vacationNumber,
+        formatDate(absence.start_date),
+        formatDate(absence.end_date),
+        absence.number_of_days,
+        totalDaysByEmployee.get(employeeKey) ?? absence.number_of_days,
+        absence.employees?.yearly_vacation_days ?? '',
+        absence.reason ?? '',
+      ];
+    });
+
+    const headers = [
+      'Employee',
+      'Vacation #',
+      'Start date',
+      'End date',
+      'Days',
+      `Total vacation days ${currentYear}`,
+      'Yearly vacation allowance',
+      'Note',
+    ];
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `vacations-${currentYear}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const updateStatus = async (id: string, status: AbsenceStatus) => {
     await supabase.from('absences').update({ status }).eq('id', id);
@@ -111,10 +181,16 @@ export default function AbsencesPage() {
         title={t('nav.absences')}
         description={t('absences.description')}
         action={
-          <Link className="btn-primary" to="/absences/new">
-            <Plus size={18} />
-            {t('absences.new')}
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button className="btn-secondary" type="button" onClick={exportVacationCsv}>
+              <Download size={18} />
+              {t('employees.exportVacationExcel')} {currentYear}
+            </button>
+            <Link className="btn-primary" to="/absences/new">
+              <Plus size={18} />
+              {t('absences.new')}
+            </Link>
+          </div>
         }
       />
 
